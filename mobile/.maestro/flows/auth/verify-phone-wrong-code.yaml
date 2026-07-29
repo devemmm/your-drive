@@ -1,0 +1,52 @@
+# QAT 2.11 — entering a wrong OTP during phone verification is rejected and
+# the user stays on the verify-phone screen (does not advance to home).
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- tapOn:
+    id: "welcome.signUpButton"
+- tapOn:
+    id: "register.firstNameInput"
+- inputText: "Wrong"
+- tapOn:
+    id: "register.lastNameInput"
+- inputText: "Otp"
+- tapOn:
+    id: "register.emailInput"
+- inputText: ${output.registerEmail}
+- tapOn:
+    id: "register.passwordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "register.confirmPasswordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "register.termsCheckbox"
+- hideKeyboard
+- tapOn:
+    id: "register.submitButton"
+
+# Auto-login lands on phone verification.
+- extendedWaitUntil:
+    visible:
+      id: "verifyPhone.phoneInput"
+    timeout: 15000
+- tapOn:
+    id: "verifyPhone.phoneInput"
+- inputText: ${output.registerPhone}
+- tapOn:
+    id: "verifyPhone.sendCodeButton"
+- tapOn:
+    id: "verifyPhone.codeInput"
+- inputText: "000000"
+- tapOn:
+    id: "verifyPhone.verifyButton"
+# Server (user.controller.ts verifyPhoneNumber) returns 400 with this copy,
+# surfaced through handleApiError → Alert.alert.
+- assertVisible: "Invalid verification code"
+- assertNotVisible:
+    id: "home.screen"

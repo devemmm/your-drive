@@ -1,0 +1,121 @@
+# Multi-seat bus booking via the operator flow (passenger UI).
+# Covers: passenger browses operator -> route -> recurring departure ->
+# picks tomorrow's date -> confirm screen -> steps passengers up to 2 ->
+# books -> ticket screen shows "Booking confirmed" and BOTH seat QR codes.
+# Server-side check: the booking has seats=2 and 2 attendance codes.
+#
+# Prerequisites:
+#   - MAESTRO_APP_ID: installed app package (local dev sim: com.yourdrive.app)
+#   - MAESTRO_TEST_API_URL / MAESTRO_TEST_AUTH_TOKEN: local test backend
+#   - iOS: the date picker renders as an inline calendar (tap a day number).
+appId: ${MAESTRO_APP_ID}
+tags:
+  - bus
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- setLocation:
+    latitude: -1.9441
+    longitude: 30.0619
+
+# Login as the seeded passenger.
+- tapOn:
+    id: "welcome.loginButton"
+- tapOn:
+    id: "auth.emailInput"
+- inputText: ${output.passengerEmail}
+- tapOn:
+    id: "auth.passwordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "auth.loginButton"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home.screen"
+    timeout: 15000
+
+# Bus tab -> operator -> route -> departure.
+- tapOn:
+    id: "home.vehicleTab.BUS"
+# Note: "bus.operator.[0-9]+" (not "bus.operator..*") — the loose regex also
+# matches the bus.operatorSearch input and taps the search box instead.
+- extendedWaitUntil:
+    visible:
+      id: "bus.operator.[0-9]+"
+    timeout: 10000
+- tapOn:
+    id: "bus.operator.[0-9]+"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "bus.route.[0-9]+"
+    timeout: 10000
+- tapOn:
+    id: "bus.route.[0-9]+"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "bus.departure.[0-9]+"
+    timeout: 15000
+- tapOn:
+    id: "bus.departure.[0-9]+"
+    index: 0
+
+# iOS inline calendar: tap tomorrow's day (avoids same-day timezone validation).
+- runScript: ../../scripts/tomorrow-day.js
+- tapOn:
+    text: ${output.tomorrowDay}
+
+# Confirm-booking screen: the new passenger stepper. Starts at 1, step to 2.
+- extendedWaitUntil:
+    visible:
+      id: "bus.seats.count"
+    timeout: 15000
+- assertVisible:
+    id: "bus.seats.count"
+    text: "1"
+- tapOn:
+    id: "bus.seats.plus"
+- assertVisible:
+    id: "bus.seats.count"
+    text: "2"
+- tapOn:
+    id: "bus.confirmBooking"
+
+# Ticket screen.
+- extendedWaitUntil:
+    visible:
+      text: "Booking confirmed"
+    timeout: 15000
+
+# Server-side verification: resolve the materialized ride (operator's latest
+# published ride), then require the booking to have 2 seats + 2 codes.
+- runScript:
+    file: ../../scripts/latest-ride-for.js
+    env:
+      MAESTRO_DRIVER_ID: ${output.operatorId}
+- runScript:
+    file: ../../scripts/find-booking-seats.js
+    env:
+      MAESTRO_RIDE_ID: ${output.latestRideId}
+      MAESTRO_PASSENGER_ID: ${output.passengerId}
+      MAESTRO_EXPECT_SEATS: "2"
+
+# Both seat QR codes are rendered on the ticket (code text under each QR).
+- extendedWaitUntil:
+    visible:
+      text: ${output.code0}
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: ${output.code1}
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    text: ${output.code1}

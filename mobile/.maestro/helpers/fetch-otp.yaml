@@ -1,0 +1,6 @@
+# Fetches the latest OTP for ${OTP_PHONE} (or ${OTP_EMAIL}) from the test API
+# and exposes it as ${OTP} for the calling flow.
+appId: ${MAESTRO_APP_ID}
+---
+- runScript:
+    file: ../scripts/fetch-otp.js

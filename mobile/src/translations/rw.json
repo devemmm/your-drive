@@ -1,0 +1,63 @@
+{
+  "common": {
+    "loading": "Gutegereza...",
+    "error": "Habaye ikosa",
+    "retry": "Ongera ugerageze",
+    "cancel": "Hagarika",
+    "confirm": "Emeza",
+    "save": "Bika",
+    "delete": "Siba",
+    "edit": "Hindura",
+    "back": "Subira inyuma",
+    "next": "Komeza",
+    "done": "Byarangiye",
+    "search": "Shakisha",
+    "noResults": "Nta bisubizo bibonetse",
+    "seeAll": "Reba byose",
+    "offline": "Nta murandasi"
+  },
+  "auth": {
+    "welcome": "Sangira ingendo. Bungabunga amafaranga. Twegere hamwe.",
+    "login": "Injira",
+    "signUp": "Iyandikishe",
+    "continueAsGuest": "Komeza nk'umushyitsi",
+    "welcomeBack": "Murakaza neza",
+    "signInContinue": "Injira kugirango ukomeze",
+    "createAccount": "Fungura konti",
+    "email": "Aderesi imeri",
+    "password": "Ijambo ry'ibanga",
+    "forgotPassword": "Wibagiwe ijambo ry'ibanga?",
+    "passwordRule": "Password must be at least 8 characters and include upper, lower, and a digit",
+    "agreeToTermsRequired": "You must accept the Terms & Conditions",
+    "agreeToTermsPrefix": "I accept the ",
+    "agreeToTermsLink": "Terms & Conditions",
+    "terms": {
+      "title": "Terms & Conditions",
+      "body": "Use of the YourDrive app implies you agree to our terms of service. Full terms will be made available in app and at yourdrive.app/terms before public launch."
+    }
+  },
+  "home": {
+    "locationBanner": "Emeza aho uri mu igenamiterere kugirango ubone abashoferi bari hafi",
+    "openSettings": "Fungura igenamiterere"
+  },
+  "tabs": {
+    "home": "Ahabanza",
+    "rides": "Ingendo",
+    "post": "Tanga",
+    "chat": "Ubutumwa",
+    "profile": "Umwirondoro"
+  },
+  "profile": {
+    "appearance": "Appearance",
+    "theme": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": "Ururimi",
+    "languageOption": {
+      "en": "English",
+      "rw": "Kinyarwanda"
+    }
+  }
+}

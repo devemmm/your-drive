@@ -1,0 +1,79 @@
+# Bus booking via a RECURRING schedule (passenger UI).
+# Covers: passenger browses an operator -> route -> the route's recurring
+# departure times (the schedule) -> picks a travel date -> that day's trip is
+# materialized (POST /rides/from-schedule) -> books -> sees the ticket.
+#
+# Prerequisites (when running this flow):
+#   - MAESTRO_APP_ID set to the installed app's package (dev: rw.yourdrive.app).
+#   - The test backend's /api/v1/test/reset seed (scripts/reset.js) must include
+#     a BUS_OPERATOR with at least one route that has an active BusRouteDeparture
+#     (route + timeOfDay + bus). The recurring schedule is what this flow books
+#     against. If the seed does not yet create one, extend the test seed first.
+#   - Backend reachable from the emulator at EXPO_PUBLIC_API_URL (10.0.2.2:<port>).
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- setLocation:
+    latitude: -1.9441
+    longitude: 30.0619
+
+# Login as the seeded passenger.
+- tapOn:
+    id: "welcome.loginButton"
+- tapOn:
+    id: "auth.emailInput"
+- inputText: ${output.passengerEmail}
+- tapOn:
+    id: "auth.passwordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "auth.loginButton"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home.screen"
+    timeout: 15000
+
+# Enter the Bus browse flow: provider -> route -> schedule.
+- tapOn:
+    text: "Bus"
+- tapOn:
+    id: "bus.operator..*"
+    index: 0
+- tapOn:
+    id: "bus.route..*"
+    index: 0
+
+# The route's schedule is a list of recurring departure times.
+- extendedWaitUntil:
+    visible:
+      id: "bus.departure..*"
+    timeout: 15000
+- tapOn:
+    id: "bus.departure..*"
+    index: 0
+
+# Date picker appears (booking-intent, auth already satisfied). Confirm a date.
+# Android default DatePickerDialog exposes an OK button; the default selection
+# is today/next valid day (minimumDate=now).
+- tapOn:
+    text: "OK"
+
+# Existing booking screen (unchanged): confirm the booking.
+- extendedWaitUntil:
+    visible:
+      text: "Confirm booking"
+    timeout: 15000
+- tapOn:
+    text: "Confirm booking"
+# Ticket screen (unchanged) confirms the end-to-end booking succeeded.
+- extendedWaitUntil:
+    visible:
+      text: "Booking confirmed"
+    timeout: 15000

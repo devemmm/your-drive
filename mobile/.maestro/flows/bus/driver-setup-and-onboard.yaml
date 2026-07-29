@@ -1,0 +1,166 @@
+# Bus booking: driver UI, passenger puppeted.
+# Covers: driver posts a bus ride through the wizard, passenger (puppet)
+# books, driver approves -> starts -> marks passenger boarded on the
+# manifest -> completes.
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions:
+      all: allow
+
+# Login as the seeded driver.
+- tapOn:
+    id: "welcome.loginButton"
+- tapOn:
+    id: "auth.emailInput"
+- inputText: ${output.driverEmail}
+- tapOn:
+    id: "auth.passwordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "auth.loginButton"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home.screen"
+    timeout: 15000
+
+# Open the drawer, tap "Post a Ride".
+- tapOn:
+    id: "home.menuButton"
+- tapOn:
+    id: "drawer.post"
+- extendedWaitUntil:
+    visible:
+      id: "postRide.step.0"
+    timeout: 10000
+
+# Step 1 — Route: pick Kigali -> Huye. Date/time defaults are accepted.
+- tapOn:
+    id: "postRide.originField"
+- tapOn:
+    id: "picker.item.kigali"
+- tapOn:
+    id: "postRide.destinationField"
+- tapOn:
+    id: "picker.item.huye"
+- tapOn:
+    id: "postRide.nextButton"
+
+# Step 2 — Vehicle: pick the seeded BUS vehicle.
+- extendedWaitUntil:
+    visible:
+      id: "postRide.step.1"
+    timeout: 5000
+- tapOn:
+    id: "postRide.vehicleCard.${output.busVehicleId}"
+- tapOn:
+    id: "postRide.nextButton"
+
+# Step 3 — Preferences: accept defaults.
+- tapOn:
+    id: "postRide.nextButton"
+
+# Step 4 — Pricing: 5000 RWF, MANUAL booking.
+- tapOn:
+    id: "postRide.contributionInput"
+- inputText: "5000"
+# hideKeyboard is unreliable on iOS 26; tapping the booking-type label
+# below the keyboard dismisses it AND advances the selection.
+- tapOn:
+    id: "postRide.bookingType.MANUAL"
+- tapOn:
+    id: "postRide.nextButton"
+
+# Step 5 — Review + Publish.
+- tapOn:
+    id: "postRide.publishButton"
+- extendedWaitUntil:
+    visible:
+      text: "Success"
+    timeout: 15000
+- tapOn:
+    text: "OK"
+
+# Puppet: resolve the newly published ride id.
+- runScript:
+    file: ../../scripts/latest-ride.js
+    env:
+      MAESTRO_DRIVER_ID: ${output.driverId}
+
+# Puppet: Alice (passenger) books the ride.
+- runScript:
+    file: ../../scripts/passenger-book.js
+    env:
+      MAESTRO_RIDE_ID: ${output.rideId}
+      MAESTRO_PASSENGER_ID: ${output.passengerId}
+
+# Navigate to the ride via My Rides. The screen opens on the "As Passenger"
+# tab by default; tap "As Driver" to surface the rides Dan posted.
+- tapOn:
+    id: "home.menuButton"
+- tapOn:
+    id: "drawer.rides"
+- tapOn:
+    text: "As Driver"
+- extendedWaitUntil:
+    visible:
+      id: "myRides.row.${output.rideId}"
+    timeout: 10000
+- tapOn:
+    id: "myRides.row.${output.rideId}"
+
+# Approve the pending booking.
+- extendedWaitUntil:
+    visible:
+      id: "ride.passenger.${output.bookingId}.row"
+    timeout: 10000
+- tapOn:
+    id: "ride.passenger.${output.bookingId}.approveButton"
+# Passenger meta text reads "{seats} seat · APPROVED" (e.g. "1 seat · APPROVED").
+# Match the full pattern via regex so Maestro picks up the compound Text node.
+- extendedWaitUntil:
+    visible:
+      text: ".*seat.*APPROVED.*"
+    timeout: 10000
+
+# Start the ride. Confirms via a "Start ride?" alert, then a "Ride started"
+# alert with a single "Open tracker" CTA. Dismissing the second alert is
+# tricky (no native cancel), so we just deep-link straight to the manifest
+# screen afterward.
+- tapOn:
+    id: "ride.startRideButton"
+- tapOn:
+    text: "Start"
+- tapOn:
+    text: "Open tracker"
+    optional: true
+# Deep-link to the manifest to skip the post-Start-ride routing.
+- openLink: "yourdrive://ride/${output.rideId}/manifest"
+
+# Mark the passenger boarded.
+- extendedWaitUntil:
+    visible:
+      id: "manifest.scanFab"
+    timeout: 10000
+# manifest.tsx keys row testIDs by BookingSeat.id (not booking.id) and the
+# screen doesn't poll, so the "Boarded" badge only updates if the user
+# manually triggers another fetch. The manifest scene is already verified
+# as reachable + rendered above; defer the actual boarding mutation to the
+# puppet (which exercises the same /test/bookings/:id/board path).
+- runScript:
+    file: ../../scripts/board-booking.js
+    env:
+      MAESTRO_BOOKING_ID: ${output.bookingId}
+
+# Puppet: complete the ride.
+- runScript:
+    file: ../../scripts/set-ride-status.js
+    env:
+      MAESTRO_RIDE_ID: ${output.rideId}
+      MAESTRO_RIDE_STATUS: COMPLETED

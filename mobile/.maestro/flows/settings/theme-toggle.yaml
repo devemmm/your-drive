@@ -1,0 +1,47 @@
+# Asserts dark theme can be selected from Profile and persists across launches.
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+
+# Log in as the seeded passenger.
+- tapOn:
+    id: "welcome.loginButton"
+- tapOn:
+    id: "auth.emailInput"
+- inputText: ${output.passengerEmail}
+- tapOn:
+    id: "auth.passwordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "auth.loginButton"
+# Dismiss iOS Save Password dialog if it appears.
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home.screen"
+    timeout: 15000
+
+# Open the drawer and Profile.
+- tapOn:
+    id: "home.menuButton"
+- tapOn:
+    id: "drawer.profile"
+
+# Pick Dark. (Initial theme may be light or dark depending on system; we only
+# assert the post-pick marker, which proves the toggle works.)
+- tapOn:
+    id: "profile.themeOption.dark"
+- assertVisible:
+    id: "app.themeMarker.dark"
+
+# Reopen app — preference persists.
+- launchApp:
+    clearState: false
+- assertVisible:
+    id: "app.themeMarker.dark"

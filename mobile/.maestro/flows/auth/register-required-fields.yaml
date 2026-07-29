@@ -1,0 +1,15 @@
+# QAT 2.3 — submitting the register form empty surfaces validation errors.
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- tapOn:
+    id: "welcome.signUpButton"
+- tapOn:
+    id: "register.submitButton"
+- assertVisible: "First name is required"
+- assertVisible: "Invalid email address"
+- assertVisible: "You must accept the Terms & Conditions"

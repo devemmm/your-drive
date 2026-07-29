@@ -1,0 +1,8 @@
+# Maestro project config — applied to every flow in this directory.
+# https://maestro.mobile.dev/api-reference/configuration/project-configuration
+flows:
+  - "flows/**"
+includeTags: []
+excludeTags: []
+executionOrder:
+  continueOnFailure: false

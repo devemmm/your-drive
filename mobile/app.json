@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "mobile",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#16142A"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "rw.yourdrive.app",
+      "config": {},
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "YourDrive needs your location to find rides near you.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "YourDrive needs your location to track your ride in real-time."
+      },
+      "buildNumber": "5"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#16142A"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "rw.yourdrive.app",
+      "config": {
+        "googleMaps": {}
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to scan passenger QR codes."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {
+        "root": "src/app"
+      },
+      "eas": {
+        "projectId": "4fc4a255-183b-476b-b7f7-2fef6f6fd549"
+      }
+    },
+    "owner": "addy_tns",
+    "runtimeVersion": "exposdk:54.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/4fc4a255-183b-476b-b7f7-2fef6f6fd549"
+    }
+  }
+}

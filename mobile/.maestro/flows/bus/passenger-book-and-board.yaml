@@ -1,0 +1,162 @@
+# Bus booking: passenger UI, driver puppeted.
+# Covers: passenger searches a bus ride, books it, sees attendance code,
+# driver (puppet) approves -> starts -> marks boarded -> completes.
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- setLocation:
+    latitude: -1.9441
+    longitude: 30.0619
+
+# Login as the seeded passenger.
+- tapOn:
+    id: "welcome.loginButton"
+- tapOn:
+    id: "auth.emailInput"
+- inputText: ${output.passengerEmail}
+- tapOn:
+    id: "auth.passwordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "auth.loginButton"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "home.screen"
+    timeout: 15000
+
+# Drive the real home picker (no deep-link bypass).
+# From defaults to "Current location" (GPS) — no need to interact unless changing.
+
+# Type destination, pick the first suggestion.
+- tapOn:
+    id: "picker.toField"
+- tapOn:
+    id: "picker.searchInput"
+- inputText: "Huye"
+- extendedWaitUntil:
+    visible:
+      id: "picker.suggestion.0"
+    timeout: 8000
+- tapOn:
+    id: "picker.suggestion.0"
+
+# Suggestion press auto-confirms — wait for the suggestion sheet to go away.
+- extendedWaitUntil:
+    notVisible:
+      id: "picker.suggestionSheet"
+    timeout: 8000
+
+# Switch to "Find a Ride" mode (default is Request).
+- tapOn:
+    id: "home.modeBtn.find"
+
+# Pick the bus vehicle tab.
+- tapOn:
+    id: "home.vehicleTab.BUS"
+
+# Sanity: date strip's Today chip is selected.
+- assertVisible:
+    id: "home.dateStrip.today.selected"
+
+# Now search.
+- tapOn:
+    id: "home.searchRidesButton"
+
+# Search results — tap the seeded ride.
+- extendedWaitUntil:
+    visible:
+      id: "search.list"
+    timeout: 10000
+- tapOn:
+    id: "search.resultCard.${output.busRideId}"
+
+# Book this ride.
+- tapOn:
+    id: "ride.bookButton"
+# Dismiss the "Booking Confirmed" success alert that appears after handleBook.
+- tapOn:
+    text: "OK"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "ride.bookingStatus"
+      text: "PENDING"
+    timeout: 10000
+
+# Resolve the new booking id for downstream puppets.
+- runScript:
+    file: ../../scripts/find-booking.js
+    env:
+      MAESTRO_RIDE_ID: ${output.busRideId}
+      MAESTRO_PASSENGER_ID: ${output.passengerId}
+
+# Driver puppet: approve the booking.
+- runScript:
+    file: ../../scripts/approve-booking.js
+    env:
+      MAESTRO_BOOKING_ID: ${output.bookingId}
+# Polling is enabled in test mode (ride/[id]/index.tsx checks
+# EXPO_PUBLIC_TEST_MODE and sets useRideDetail's refetchInterval to 2000ms),
+# so puppet-driven changes propagate within ~2s. Just wait for the UI to
+# update.
+- extendedWaitUntil:
+    visible:
+      id: "ride.bookingStatus"
+      text: "APPROVED"
+    timeout: 10000
+# QR ticket must be visible to the passenger AT APPROVAL — before the ride
+# starts. Conductor scans this code at boarding. The wrapper view is always
+# mounted, so check for the code/QR child by matching the attendance code
+# text that TicketQr renders under the QR image.
+- extendedWaitUntil:
+    visible:
+      text: "Show this to the conductor on boarding."
+    timeout: 10000
+
+# Driver puppet: start the ride.
+- runScript:
+    file: ../../scripts/set-ride-status.js
+    env:
+      MAESTRO_RIDE_ID: ${output.busRideId}
+      MAESTRO_RIDE_STATUS: ONGOING
+
+# Driver puppet: mark passenger boarded.
+- runScript:
+    file: ../../scripts/board-booking.js
+    env:
+      MAESTRO_BOOKING_ID: ${output.bookingId}
+# Polling is enabled in test mode (ride/[id]/index.tsx checks
+# EXPO_PUBLIC_TEST_MODE and sets useRideDetail's refetchInterval to 2000ms),
+# so puppet-driven changes propagate within ~2s. Just wait for the UI to
+# update.
+- extendedWaitUntil:
+    visible:
+      id: "ride.bookingStatus"
+      text: "APPROVED"
+    timeout: 20000
+# (Boarded state is recorded server-side via BookingSeat.attendedAt; today's
+# UI doesn't render a distinct "boarded" badge on the passenger booking
+# banner. Update this assertion once the passenger UI surfaces boarded state.)
+
+# Driver puppet: complete the ride.
+- runScript:
+    file: ../../scripts/set-ride-status.js
+    env:
+      MAESTRO_RIDE_ID: ${output.busRideId}
+      MAESTRO_RIDE_STATUS: COMPLETED
+# Polling is enabled in test mode (ride/[id]/index.tsx checks
+# EXPO_PUBLIC_TEST_MODE and sets useRideDetail's refetchInterval to 2000ms),
+# so puppet-driven changes propagate within ~2s. Just wait for the UI to
+# update.
+- extendedWaitUntil:
+    visible:
+      id: "ride.bookingStatus"
+      text: "COMPLETED"
+    timeout: 10000

@@ -1,0 +1,22 @@
+# QAT 3.2 — login with an unknown email is rejected (server doesn't leak whether
+# the email exists; same "Invalid credentials." message).
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- tapOn:
+    id: "welcome.loginButton"
+- tapOn:
+    id: "auth.emailInput"
+- inputText: "nosuch@example.com"
+- tapOn:
+    id: "auth.passwordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "auth.loginButton"
+- assertVisible: "Invalid credentials."
+- assertNotVisible:
+    id: "home.screen"

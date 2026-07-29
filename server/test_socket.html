@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h2>Real-Time Notifications</h2>
+    
+    <!-- <label>JWT Token:</label>
+    <input type="text" id="tokenInput" placeholder="Enter your JWT token" style="width: 300px;">
+    <button onclick="connectSocket()">Connect</button> -->
+    
+    <hr>
+    
+    <!-- <h3>Received Notifications:</h3> -->
+    <ul id="notificationsList"></ul>
+
+    <script>
+        let socket;
+
+        function connectSocket() {
+            const token = localStorage.getItem("token");
+            if (!token) return alert("No token!");
+
+            socket = io("http://localhost:3003", {
+                auth: { token }
+            });
+
+            socket.on("connect", () => {
+                console.log("Connected to server");
+            });
+
+            socket.on("notification", (notification) => {
+                console.log("New notification:", notification);
+                const listItem = document.createElement("li");
+                listItem.innerText = `${notification.title} - ${notification.message}`;
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+
+            //Automatic ui updates
+            socket.on("payment_succeeded", (data) => {
+                console.log("New transaction:", data);
+                // updat the ui about new request
+                const listItem = document.createElement("li");
+                listItem.innerText = JSON.stringify(data);
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+            socket.on("payment_cancelled", (data) => {
+                console.log("New payment:", data);
+                // updat the ui about new request
+                const listItem = document.createElement("li");
+                listItem.innerText = JSON.stringify(data);
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+            socket.on("subscription_activated", (data) => {
+                console.log("New subscription_activated:", data);
+                // updat the ui about new request
+                const listItem = document.createElement("li");
+                listItem.innerText = JSON.stringify(data);
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+            socket.on("payment_failed", (data) => {
+                console.log("payment failed:", data);
+                // updat the ui about new request
+                const listItem = document.createElement("li");
+                listItem.innerText = JSON.stringify(data);
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+            socket.on("passenger_booking", (data) => {
+                console.log("booking update:", data);
+                // updat the ui about new request
+                const listItem = document.createElement("li");
+                listItem.innerText = JSON.stringify(data);
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+            socket.on("driver_booking", (data) => {
+                console.log("booking update:", data);
+                // updat the ui about new request
+                const listItem = document.createElement("li");
+                listItem.innerText = JSON.stringify(data);
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+            socket.on("ride_updated", (data) => {
+                console.log("New ride update:", data);
+                // updat the ui about new request
+                const listItem = document.createElement("li");
+                listItem.innerText = JSON.stringify(data);
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+            socket.on("payment_authorized", (data) => {
+                console.log("New authorized payments:", data);
+                // updat the ui about new request
+                const listItem = document.createElement("li");
+                listItem.innerText = JSON.stringify(data);
+                document.getElementById("notificationsList").prepend(listItem);
+            });
+            socket.on("disconnect", () => {
+                console.log("Disconnected from server");
+            });
+
+            socket.on("connect_error", (error) => {
+                console.error("Connection Error:", error);
+                alert("Failed to connect. Check console for details.");
+            });
+        }
+
+        connectSocket();
+    </script>
+</body>
+</html>

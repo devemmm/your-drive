@@ -1,0 +1,33 @@
+# QAT 2.8 — registering with an existing email surfaces a 409 error to the user.
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- tapOn:
+    id: "welcome.signUpButton"
+- tapOn:
+    id: "register.firstNameInput"
+- inputText: "Dup"
+- tapOn:
+    id: "register.lastNameInput"
+- inputText: "User"
+- tapOn:
+    id: "register.emailInput"
+- inputText: ${output.passengerEmail}
+- tapOn:
+    id: "register.passwordInput"
+- inputText: "Password1"
+- tapOn:
+    id: "register.confirmPasswordInput"
+- inputText: "Password1"
+- tapOn:
+    id: "register.termsCheckbox"
+- hideKeyboard
+- tapOn:
+    id: "register.submitButton"
+# Server (auth.controller.ts register) replies 409 with this exact copy, surfaced
+# via handleApiError → Alert.alert.
+- assertVisible: "Account with this email already exist."

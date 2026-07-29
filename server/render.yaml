@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: your-drive-backend
+    env: node
+    buildCommand: npm run build:deploy && prisma migrate deploy
+    startCommand: NODE_OPTIONS=--max-old-space-size=4096 npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=4096
+    healthCheckPath: /health

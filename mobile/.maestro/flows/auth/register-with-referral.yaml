@@ -1,0 +1,53 @@
+# Register a user with a referral code; assert the link is persisted server-side.
+appId: ${MAESTRO_APP_ID}
+env:
+  OTP_PHONE: ${output.registerPhone}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- tapOn:
+    id: "welcome.signUpButton"
+- tapOn:
+    id: "register.firstNameInput"
+- inputText: "Ref"
+- tapOn:
+    id: "register.lastNameInput"
+- inputText: "Erred"
+- tapOn:
+    id: "register.emailInput"
+- inputText: ${output.registerEmail}
+- tapOn:
+    id: "register.passwordInput"
+- inputText: "Password1"
+- tapOn:
+    id: "register.confirmPasswordInput"
+- inputText: "Password1"
+- tapOn:
+    id: "register.referralInput"
+- inputText: ${output.inviterReferralCode}
+- tapOn:
+    id: "register.termsCheckbox"
+- hideKeyboard
+- tapOn:
+    id: "register.submitButton"
+
+# Dismiss iOS Save Password dialog if it appears after auto-login.
+- tapOn:
+    text: "Not Now"
+    optional: true
+
+- extendedWaitUntil:
+    visible:
+      id: "verifyPhone.phoneInput"
+    timeout: 15000
+
+# Dismiss iOS Save Password dialog if it reappears before any home interaction.
+- tapOn:
+    text: "Not Now"
+    optional: true
+
+# Once the user is registered, assert the server linked them to the inviter.
+- runScript: ../../scripts/fetch-referral.js

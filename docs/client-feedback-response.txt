@@ -1,0 +1,78 @@
+Hi,
+
+Thank you for taking the time to review the wireframes and share your thoughts — I appreciate the detail.
+
+I've gone through each point carefully against our signed contract and the current state of the app. Below is a summary of where each item stands.
+
+
+*ITEMS ALREADY DELIVERED*
+
+1. Home Screen — "Where do you want to go?" with two options
+Done. The home screen already has "Where are you going?" with "Request a Ride" and "Find a Ride" as the two primary options.
+
+2. Ride Now — tap, enter destination, send request
+Done. "Request a Ride" lets the user select pickup, destination, number of passengers, proposed fare, and submit.
+
+3. Driver Mode — driver interface, incoming ride requests
+Done. The Rides screen has an "As Driver" tab where drivers can view their posted rides, manage bookings, and see chauffeur services. Incoming ride requests are handled via the notification system.
+
+5. Booking Screen
+Done. Ride detail screens with status tracking, booking management, and driver/passenger context-aware actions are in place.
+
+7. ID verification, driver behaviour tracking
+Partially done. Drivers must upload their driver's license (front and back images) during onboarding before they can post rides. A full rating and review system is also in place — passengers rate drivers (1-5 stars + optional comment) after completed rides, and driver average ratings are calculated automatically.
+
+
+*ITEMS OUTSIDE THE CONTRACT SCOPE*
+
+The following items are not part of our current agreement. They would require a separate scope discussion and additional budget.
+
+2. Nearby drivers on map, ETA, price estimate, auto-match
+This requires real-time GPS tracking infrastructure, mapping APIs, a pricing engine, and a matching algorithm — none of which are included in the contract deliverables.
+
+3. Go online/offline, pick up passengers mid-trip
+Real-time dispatch features (online/offline status, mid-trip passenger pickup) require WebSocket infrastructure and continuous GPS streaming — not part of the agreed scope.
+
+4. Dynamic routes — "passing near you"
+Proximity-based route matching requires a geospatial engine and real-time driver location data. The contracted platform matches by city-to-city routes as designed.
+
+5. Live driver movement on map
+Real-time location streaming requires persistent connections and continuous GPS — not included in the current scope.
+
+6. Payment system (mobile money, wallet, partial payments)
+The platform already supports direct cash payments. Mobile money integration, wallet functionality, and partial payments are new features not in the contract — these require payment gateway contracts, API integrations, and compliance work.
+
+7. Live ride sharing, emergency button
+Drivers are already required to upload a license and the rating system is already in place (see above). The remaining items — live ride sharing and emergency button — are new features not in the contract and this is the first mention of them.
+
+8. Growth engine (referrals, incentives, discounts)
+This is the first mention of these features. Referral tracking, promo codes, and discount systems are not in the agreed deliverables.
+
+9. High demand alerts
+This is the first mention of this feature. Demand detection and notification systems are not in scope.
+
+
+*A NOTE ON FEEDBACK APPROACH*
+
+I noticed that several of the points above read as a general feature audit rather than specific feedback on the wireframes I shared. To make the most of our review sessions, I'd encourage you to focus feedback on:
+
+- The actual screens and flows I present to you
+- How well they meet the deliverables outlined in our signed contract
+- Specific usability concerns based on your knowledge of the target users
+
+When feedback is generated externally rather than based on what we've agreed to build, it tends to produce feature wishlists that don't account for our scope, timeline, or budget — and can create confusion about what's included in the project.
+
+I'm happy to discuss any of these items. If you'd like to explore the out-of-scope features as a future phase, we can arrange a separate scoping conversation.
+
+
+*NEXT STEPS*
+
+Per our contract, the remaining deliverables are:
+
+- Phase B: Bus Ticket Booking (Weeks 3-4)
+- Phase C: Mobile Application — iOS and Android store submission (Weeks 5-6)
+
+I'll continue working on these as planned. Per Section 11.2 of our agreement, any changes to the project scope need to be agreed in writing by both parties.
+
+Best regards,
+Adrian

@@ -1,0 +1,141 @@
+# Guest browse + just-in-time auth gate:
+# - Land on welcome, continue as guest.
+# - Browse "Rent a Car" via the home sheet's service row (public CTA, works as guest).
+# - Tap a rental card to open detail.
+# - Tap "Request Rental" -> redirected to welcome (gated CTA).
+# - Tap "Sign up" -> register screen.
+# - Complete registration + phone verification (auto-login).
+# - After onboarding the gate auto-routes back to the rental and replays the
+#   pending request, so the booking success alert appears without re-tapping.
+appId: ${MAESTRO_APP_ID}
+env:
+  OTP_PHONE: ${output.registerPhone}
+---
+- runScript: ../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+
+# Welcome -> continue as guest
+- assertVisible:
+    id: "welcome.actions"
+- assertVisible:
+    id: "welcome.guestButton"
+- tapOn:
+    id: "welcome.guestButton"
+
+# Guest lands on the home (drawer root). The map is the public surface.
+- extendedWaitUntil:
+    visible:
+      id: "home.screen"
+    timeout: 15000
+
+# Tap "Rent a Car" on the home sheet's service row (no auth gate -- public
+# catalogue). The entry point moved out of the drawer into the home sheet.
+# The row is horizontally scrollable and overflows on current iPhones, so the
+# RENTAL pill can start partially (or fully) off-screen -- scroll it into view
+# before tapping since tapOn does not auto-scroll.
+- scrollUntilVisible:
+    element:
+      id: "home.serviceTab.RENTAL"
+    direction: RIGHT
+    centerElement: true
+- tapOn:
+    id: "home.serviceTab.RENTAL"
+
+# Rental list renders. Use the header text as the screen marker, then tap
+# the first rental card.
+- assertVisible: "Rent a Car"
+- extendedWaitUntil:
+    visible:
+      id: "rental.listItem"
+    timeout: 10000
+- tapOn:
+    id: "rental.listItem"
+    index: 0
+
+# Rental detail screen + Book CTA must be present.
+- extendedWaitUntil:
+    visible:
+      id: "rental.detail.screen"
+    timeout: 10000
+- assertVisible:
+    id: "rental.bookButton"
+
+# Tap Book as a guest -> redirect to welcome (just-in-time auth gate).
+- tapOn:
+    id: "rental.bookButton"
+- extendedWaitUntil:
+    visible:
+      id: "welcome.actions"
+    timeout: 5000
+- assertVisible:
+    id: "welcome.signUpButton"
+
+# Choose Sign up -> register screen.
+- tapOn:
+    id: "welcome.signUpButton"
+- extendedWaitUntil:
+    visible:
+      id: "register.firstNameInput"
+    timeout: 10000
+
+# Register a fresh user. Mirrors flows/auth/register.yaml so reset.js
+# fixtures (registerEmail, registerPhone, password) are reused.
+- tapOn:
+    id: "register.firstNameInput"
+- inputText: "Test"
+- tapOn:
+    id: "register.lastNameInput"
+- inputText: "Guest"
+- tapOn:
+    id: "register.emailInput"
+- inputText: ${output.registerEmail}
+- tapOn:
+    id: "register.passwordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "register.confirmPasswordInput"
+- inputText: ${output.password}
+- tapOn:
+    id: "register.termsCheckbox"
+- hideKeyboard
+- tapOn:
+    id: "register.submitButton"
+
+# Dismiss iOS Save Password dialog if it appears after auto-login.
+- tapOn:
+    text: "Not Now"
+    optional: true
+
+# Auto-login routes to phone verification.
+- extendedWaitUntil:
+    visible:
+      id: "verifyPhone.phoneInput"
+    timeout: 15000
+- tapOn:
+    id: "verifyPhone.phoneInput"
+- inputText: ${output.registerPhone}
+- tapOn:
+    id: "verifyPhone.sendCodeButton"
+
+- runScript: ../scripts/fetch-otp.js
+- tapOn:
+    id: "verifyPhone.codeInput"
+- inputText: ${output.otp}
+- tapOn:
+    id: "verifyPhone.verifyButton"
+
+# Dismiss iOS Save Password dialog if it appears at home mount.
+- tapOn:
+    text: "Not Now"
+    optional: true
+
+# After onboarding the AuthGate auto-routes back to the rental and replays the
+# pending Book request, so the success alert appears WITHOUT the user re-tapping.
+- extendedWaitUntil:
+    visible: "Request sent!"
+    timeout: 20000
+- tapOn:
+    text: "OK"

@@ -1,0 +1,31 @@
+# QAT 2.4 — register form rejects malformed email addresses.
+appId: ${MAESTRO_APP_ID}
+---
+- runScript: ../../scripts/reset.js
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+- tapOn:
+    id: "welcome.signUpButton"
+- tapOn:
+    id: "register.firstNameInput"
+- inputText: "Inv"
+- tapOn:
+    id: "register.lastNameInput"
+- inputText: "Email"
+- tapOn:
+    id: "register.emailInput"
+- inputText: "not-an-email"
+- tapOn:
+    id: "register.passwordInput"
+- inputText: "Password1"
+- tapOn:
+    id: "register.confirmPasswordInput"
+- inputText: "Password1"
+- tapOn:
+    id: "register.termsCheckbox"
+- hideKeyboard
+- tapOn:
+    id: "register.submitButton"
+- assertVisible: "Invalid email address"

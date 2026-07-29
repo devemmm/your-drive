@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>YourDrive — Client's Intended User Flow</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #fafafa;
+    --panel: #ffffff;
+    --ink: #1a1a1a;
+    --muted: #555;
+    --line: #e5e5e5;
+    --accent: #0f62fe;
+    --warn: #c0392b;
+    --ok: #047a3e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    padding: 28px 40px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 26px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 40px 80px; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+  }
+  section h2 { margin-top: 0; font-size: 19px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  section h3 { font-size: 15px; color: var(--muted); margin-top: 24px; }
+  .mermaid {
+    background: #fff;
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px dashed var(--line);
+    overflow-x: auto;
+  }
+  .callout {
+    background: #fff8e1;
+    border-left: 4px solid #f5b50a;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  .callout.warn { background: #fdecea; border-left-color: var(--warn); }
+  .callout.ok { background: #eaf7ef; border-left-color: var(--ok); }
+  .callout strong { display: block; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f4f4f4; font-weight: 600; }
+  td.req { color: var(--ok); font-weight: 600; }
+  td.opt { color: var(--muted); }
+  td.dash { color: #bbb; }
+  code, kbd { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0 20px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  ol li, ul li { margin: 4px 0; }
+  .note { font-size: 13px; color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>YourDrive — Client's Intended User Flow</h1>
+  <div class="meta">
+    Date: 2026-05-08 · Source: client's hand-drawn flow · Companion: <code>docs/superpowers/specs/2026-05-08-client-intended-flow.md</code> · Gap analysis §8
+  </div>
+</header>
+
+<main>
+
+<section>
+  <h2>1. Top-level entry — auth is NOT a gate</h2>
+  <p>Headline rule: the app is browseable without an account. Signup is just-in-time, fired only when the user attempts an action that needs identity (book a seat, post a vehicle, request a rental, pay a fee).</p>
+
+  <div class="mermaid">
+flowchart TD
+  A([App launch]) --> B[Onboarding splash screens]
+  B --> C{First-launch decision:<br/>Register now or Skip?}
+  C -->|Skip| D[Public home<br/>browse map + services + listings]
+  C -->|Register| E[Pick role and capture docs<br/>see sections 3–5]
+
+  D --> F{User taps a CTA}
+  F -->|Read-only browse| D
+  F -->|Action needs identity| G{Authenticated?}
+
+  G -->|No| E
+  G -->|Yes| H[Perform action]
+
+  E --> I[Role-aware home<br/>passenger / driver / chauffeur /<br/>rental partner / bus operator]
+  H --> I
+
+  classDef gate fill:#fdf3d5,stroke:#c0931f
+  classDef action fill:#e7f1ff,stroke:#0f62fe
+  class C,G gate
+  class H action
+  </div>
+
+  <div class="callout">
+    <strong>Interpretation</strong>
+    The client wrote both "register now or skip" (entry) and "if you're not registered you have to register faster on the platform" (bottom-right). Not contradictory — they describe two moments: the first-launch splash decision, and the just-in-time prompt when a guest hits a gated CTA.
+  </div>
+</section>
+
+<section>
+  <h2>2. Service catalogue (browse mode)</h2>
+  <p>Three top-level services visible to guests:</p>
+
+  <div class="mermaid">
+flowchart LR
+  Home[Public home] --> R[Cars Ride]
+  Home --> Bus[Bus with GPS]
+  Home --> Tax[Motor / Car Tax<br/>NEW — scope unconfirmed]
+
+  R --> R1[Personal car driver]
+  R --> R2[Private chauffeur]
+  R --> R3[Car rental]
+  R --> R4[On-demand passenger ride]
+  Bus --> Bus1[Search routes / book seats]
+  Bus --> Bus2[Bus company posts trips]
+
+  classDef new fill:#fdecea,stroke:#c0392b
+  class Tax new
+  </div>
+</section>
+
+<section>
+  <h2>3. Cars Ride — passenger and driver onboarding</h2>
+
+  <div class="mermaid">
+flowchart TD
+  Cars[Cars Ride] --> P[Passenger]
+  Cars --> D[Driver]
+
+  P --> P1[Phone number]
+  P --> P2[Email]
+  P --> P3[Picture — optional]
+  P1 --> PHome[Passenger home<br/>request ride / book trip]
+  P2 --> PHome
+  P3 --> PHome
+
+  D --> D1[Driver only<br/>vehicle owned by cooperative/employer]
+  D --> D2[Driver + motor owner]
+  D1 --> D1Docs[Valid driving licence<br/>+ ID or passport<br/>+ driver card photo]
+  D2 --> D2Docs[All driver-only docs<br/>+ yellow card<br/>+ insurance / authorization]
+  D1Docs --> DHome[Driver home<br/>online toggle / earnings]
+  D2Docs --> DHome
+
+  classDef role fill:#e7f1ff,stroke:#0f62fe
+  class P,D1,D2 role
+  </div>
+
+  <div class="callout warn">
+    <strong>Open question: cooperative-owned vehicles</strong>
+    Schema currently assumes <code>Vehicle.userId</code> = driver. Modelling "driver only" cleanly needs either an <code>operatorId</code> separate from <code>ownerId</code>, OR a convention that a cooperative is a <code>User</code> who owns vehicles and dispatches drivers via existing relations. Pick one before specing.
+  </div>
+</section>
+
+<section>
+  <h2>4. Cars Ride — Personal car / Chauffeur / Rental</h2>
+
+  <div class="mermaid">
+flowchart TD
+  PCD[Personal car driver] --> PCDDocs[Insurance, plate, yellow card,<br/>driving licence, technical control,<br/>pictures of the car]
+  Ch[Private chauffeur] --> ChDocs[Valid driving licence + image,<br/>ID, criminal record,<br/>personal information]
+
+  Rental[Car rental] --> RC[Rental company / partner]
+  Rental --> RCl[Client]
+  RC --> RCFlow[Post car → admin approves →<br/>car appears with limited public info]
+  RCl --> RClFlow[Search posted cars<br/>→ view teaser info only<br/>→ send booking request to company<br/>→ on company approval see full contacts<br/>→ pay platform fee<br/>→ sign contract]
+
+  classDef strict fill:#fdecea,stroke:#c0392b
+  class RClFlow strict
+  </div>
+
+  <div class="callout warn">
+    <strong>Stricter than current rental flow</strong>
+    Today we surface the full <code>Vehicle</code> record on browse and contract is implicit on payment. Client wants two-step: teaser only → company approves → contact reveal → fee → contract. Affects <code>srv/rental</code> and the mobile rental detail screen.
+  </div>
+</section>
+
+<section>
+  <h2>5. Bus with GPS</h2>
+
+  <div class="mermaid">
+flowchart TD
+  Bus[Bus with GPS] --> BP[Passenger]
+  Bus --> BC[Bus company]
+
+  BC --> BCD[Bus operator dashboard]
+  BCD --> BCD1[Post all buses]
+  BCD --> BCD2[Add info, time, date per trip]
+
+  BP --> BPSearch[Search by company / route<br/>filter e.g. Volcano, Horizon]
+  BPSearch --> BPBook[Book seat]
+  BPBook --> BPTicket[Get trip code / ticket]
+  BPTicket --> BPGPS[Track bus location via GPS<br/>during trip]
+
+  classDef built fill:#eaf7ef,stroke:#047a3e
+  classDef missing fill:#fdecea,stroke:#c0392b
+  class BCD,BCD1,BCD2,BPSearch,BPBook,BPTicket built
+  class BPGPS missing
+  </div>
+
+  <div class="legend">
+    <span><i style="background:#eaf7ef;border:1px solid #047a3e"></i>built in slice 1</span>
+    <span><i style="background:#fdecea;border:1px solid #c0392b"></i>missing — needs cross-cutting GPS work</span>
+  </div>
+</section>
+
+<section>
+  <h2>6. Motor / Car Tax — NEW vertical</h2>
+
+  <div class="mermaid">
+flowchart TD
+  MT[Motor / Car Tax] --> MTD[Driver only]
+  MT --> MTO[Driver + car owner]
+
+  MTD --> MTD1[Driver documents from<br/>cooperative + RURA]
+  MTO --> MTO1[Tax documents<br/>+ car documents<br/>+ driver documents]
+
+  MTD1 --> Have{Have account?}
+  MTO1 --> Have
+  Have -->|Yes| MTHome[Tax home screen]
+
+  classDef new fill:#fdecea,stroke:#c0392b
+  class MT,MTD,MTO,MTD1,MTO1,MTHome new
+  </div>
+
+  <div class="callout warn">
+    <strong>Not in any prior client doc, not in the schema</strong>
+    Treat as a discrete new vertical: a digital wallet for vehicle-tax compliance (cooperative letters, RURA permits, vehicle tax receipts). If confirmed in scope, minimum delta is <code>DriverDocument</code> / <code>VehicleDocument</code> models with category enum, upload + admin review, and expiry tracking. Effort comparable to KYC slice. Recommend: confirm with client before assigning a slice.
+  </div>
+</section>
+
+<section>
+  <h2>7. Per-role onboarding — required documents</h2>
+  <p>Canonical KYC checklist when slice 3 (KYC) is picked up.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Role</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Photo</th>
+        <th>ID/Passport</th>
+        <th>Licence</th>
+        <th>Driver card</th>
+        <th>Yellow card / plate</th>
+        <th>Insurance</th>
+        <th>Technical control</th>
+        <th>Vehicle photos</th>
+        <th>Criminal record</th>
+        <th>Tax / RURA / coop</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Passenger</td><td class="req">●</td><td class="req">●</td><td class="opt">opt</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td></tr>
+      <tr><td>Driver only (employed)</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td></tr>
+      <tr><td>Driver + motor owner</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td></tr>
+      <tr><td>Personal car driver</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="dash">—</td><td class="dash">—</td></tr>
+      <tr><td>Private chauffeur</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="req">●</td><td class="dash">—</td></tr>
+      <tr><td>Rental partner</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="dash">—</td><td class="dash">—</td><td class="req">● per car</td><td class="req">● per car</td><td class="dash">—</td><td class="req">● per car</td><td class="dash">—</td><td class="dash">—</td></tr>
+      <tr><td>Bus operator</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="req">●</td><td class="dash">—</td><td class="dash">—</td><td class="req">● per bus</td><td class="req">● per bus</td><td class="req">● per bus</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td></tr>
+      <tr><td>Motor-tax user (NEW)</td><td class="req">●</td><td class="req">●</td><td class="opt">opt</td><td class="req">●</td><td class="req">●</td><td class="dash">—</td><td class="opt">cond.</td><td class="opt">cond.</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="req">●</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>8. Inferred client intent — summary</h2>
+  <ol>
+    <li><strong>Auth is not a gate.</strong> Public home + browse for everyone; per-action prompts only.</li>
+    <li><strong>One app, multiple roles, role-aware post-register routing.</strong></li>
+    <li><strong>Three service verticals:</strong> Cars (with four sub-services), Bus, Motor/Car Tax (new).</li>
+    <li><strong>KYC is per-role</strong>, not one universal flow.</li>
+    <li><strong>Rental flow is two-step:</strong> company approves before contact / contract is shared; platform fee gates contract.</li>
+    <li><strong>Bus flow needs live GPS during trip</strong> in addition to the booking + manifest mechanics already built.</li>
+    <li><strong>Motor/Car Tax is a new, currently un-scoped vertical.</strong> Needs client confirmation before any work.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>9. Open questions for client</h2>
+  <ol>
+    <li>Confirm the Motor/Car Tax vertical is in scope, and which milestone.</li>
+    <li>Confirm "Driver only" (cooperative-employed) needs distinct schema modelling vs "Driver who happens to own no vehicle".</li>
+    <li>Confirm the rental two-step contact-reveal + fee-before-contract is the desired flow.</li>
+    <li>Confirm "live GPS during bus trip" is a launch requirement vs nice-to-have.</li>
+    <li>Confirm operator names (Volcano / Horizon / others) and whether we pre-seed them.</li>
+    <li>Confirm role-aware home screens are required, or if role-aware CTAs on a single home are acceptable.</li>
+  </ol>
+</section>
+
+</main>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    flowchart: { curve: 'basis', useMaxWidth: true, htmlLabels: true },
+    securityLevel: 'loose',
+  });
+</script>
+
+</body>
+</html>

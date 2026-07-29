@@ -1,0 +1,1466 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                             Int                @id @default(autoincrement())
+  email                          String             @unique
+  firstName                      String?
+  lastName                       String?
+  password                       String?
+  phoneNumber                    String?            @unique
+  role                           UserRole           @default(USER)
+  isVerified                     Boolean            @default(false)
+  isPhoneVerified                Boolean            @default(false)
+  verificationCode               String?
+  verificationCodeExpiresAt      DateTime?
+  phoneVerificationCode          String?
+  phoneVerificationCodeExpiresAt DateTime?
+  resetToken                     String?
+  resetTokenExpiry               DateTime?
+  googleId                       String?            @unique
+  appleId                        String?            @unique
+  language                       Language           @default(EN)
+  theme                          String             @default("light")
+  status                         Status             @default(ACTIVE)
+  isOnboarded                    Boolean            @default(false)
+  createdAt                      DateTime           @default(now())
+  updatedAt                      DateTime           @updatedAt
+  profileImage                   Asset?
+  postedRides                    Ride[]
+  subscriptions                  UserSubscription[]
+  vehicles                       Vehicle[]
+  averageRating                  Float              @default(0)
+  totalRatings                   Int                @default(0)
+
+  // Onboarding and profile fields
+  dateOfBirth          DateTime?
+  notificationPref     NotificationPreference @default(IN_APP)
+  twoFactorEnabled     Boolean                @default(false)
+  termsAccepted        Boolean                @default(false)
+  isPassengerOnboarded Boolean                @default(false)
+  isDriverOnboarded    Boolean                @default(false)
+
+  // Passenger fields
+  travelPreferences     RidePreference?
+  frequentRoutes        Json?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  referralCode          String          @unique
+  sentReferrals         Referral[]      @relation("UserInviter")
+  receivedReferral      Referral?       @relation("UserInvitee")
+
+  // Driver fields
+  licenseNumber             String?
+  licenseImageId            Int?             @unique
+  licenseImage              Asset?           @relation("LicenseImage", fields: [licenseImageId], references: [id], onDelete: SetNull)
+  drivingExperience         String?
+  licenseImages             LicenseImages?
+  transactions              Transaction[]
+  notifications             Notification[]
+  fcm_token                 String?
+  bookings                  Booking[]
+  stripeCustomerId          String?          @unique // For Stripe integration
+  cancelledBookings         Booking[]        @relation("BookingCanceller")
+  chatMessages              ChatMessage[]
+  chatThreads               ChatThread[]     @relation("UsersOnThreads")
+  coupons                   Coupon[]
+  reviewedCancellationRides Ride[]           @relation("RideCancellationReviewer")
+  blockedRides              Ride[]           @relation("RideBlocker")
+  redeemedCoupons           RedeemedCoupon[]
+
+  driverReviews Review[] @relation("DriverReviews")
+
+  userReviews            Review[]            @relation("UserReviews")
+  stripeAccountId        String?             @unique
+  isStripeOnboarded      Boolean             @default(false)
+  messageReads           MessageRead[] // Track which messages this user has read
+  isDeleted              Boolean             @default(false) // Soft delete flag
+  deletedAt              DateTime? // When the user was deleted
+  isEmailVerified        Boolean             @default(false)
+  isWelcomeEmailSent     Boolean             @default(false)
+  ownedThreads           ChatThread[]
+  acceptedReceiveUpdates Boolean             @default(false)
+  noShows                NoShow[]            @relation(name: "NoShowUser")
+  reportedNoShows        NoShow[]            @relation(name: "NoShowReportedBy")
+  suspendedAt            DateTime?
+  suspendUntil           DateTime? // Optional, if the user is suspended until a specific date
+  suspensionReason       String? // Reason for suspension, if applicable
+  reviewedNoShows        NoShow[]            @relation("NoShowReviewer")
+  paymentSessions        PaymentSession[]
+  billingAddress         Json?
+  d2dBookingRequests     D2DBookingRequest[] @relation("PassengerRequests")
+  rideRequests           RideRequest[]
+
+  renterRentals    CarRental[] @relation("RenterRentals")
+  ownerRentals     CarRental[] @relation("OwnerRentals")
+  cancelledRentals CarRental[] @relation("RentalCancelledBy")
+
+  // Chauffeur driver fields
+  isAvailableForChauffeur Boolean  @default(false)
+  chauffeurHourlyRate     Decimal? @db.Decimal(10, 2)
+  chauffeurDailyRate      Decimal? @db.Decimal(10, 2)
+  chauffeurDescription    String?
+  // ISO 639-1 codes (e.g. ["en","rw","fr"]). Shown in chauffeur picker.
+  languagesSpoken         Json?
+
+  // On-demand ride-request driver availability
+  isAvailableForRideRequest Boolean @default(false)
+
+  passengerChauffeurServices ChauffeurService[] @relation("PassengerChauffeurServices")
+  driverChauffeurServices    ChauffeurService[] @relation("DriverChauffeurServices")
+  cancelledChauffeurServices ChauffeurService[] @relation("ChauffeurCancelledBy")
+
+  presence DriverPresence?
+
+  // Wallet fields
+  walletBalanceCents   Int        @default(0)
+  walletDebtLimitCents Int?
+  operatorRoutes       BusRoute[] @relation("OperatorRoutes")
+
+  reportsFiled    RideReport[] @relation("ReportReporter")
+  reportsAgainst  RideReport[] @relation("ReportSubject")
+  reportsReviewed RideReport[] @relation("ReportReviewer")
+
+  // KYC for becoming a driver. Defaults to PENDING; admin promotes to APPROVED.
+  // Going online (isAvailableForRideRequest) and adding a vehicle are gated on
+  // kycStatus = APPROVED — see auth/driver-presence controllers.
+  kycStatus        KycStatus @default(PENDING)
+  kycReviewedAt    DateTime?
+  kycReviewedById  Int?
+  kycReviewedBy    User?     @relation("UserKycReviewer", fields: [kycReviewedById], references: [id])
+  kycReviewedUsers User[]    @relation("UserKycReviewer")
+  kycReviewNotes   String?
+
+  reviewedVehicleKyc Vehicle[] @relation("VehicleKycReviewer")
+
+  rideBids      RideBid[] @relation("DriverRideBids")
+  lastBidPushAt DateTime?
+}
+
+model LicenseImages {
+  id           Int  @id @default(autoincrement())
+  userId       Int  @unique
+  frontImageId Int? @unique
+  backImageId  Int? @unique
+
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  frontImage Asset? @relation("FrontLicenseImage", fields: [frontImageId], references: [id], onDelete: SetNull)
+  backImage  Asset? @relation("BackLicenseImage", fields: [backImageId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Referral {
+  id        Int      @id @default(autoincrement())
+  inviterId Int
+  inviteeId Int      @unique
+  createdAt DateTime @default(now())
+
+  inviter User @relation("UserInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User @relation("UserInvitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+}
+
+enum NotificationPreference {
+  EMAIL
+  SMS
+  IN_APP
+}
+
+model Ride {
+  id                    Int      @id @default(autoincrement())
+  departureTime         DateTime
+  departureLocationId   Int      @unique
+  destinationLocationId Int      @unique
+  isLocked              Boolean  @default(false) // added to match controller usage
+  appliedDriverCoupons  Boolean  @default(false) // or whatever type is appropriate
+
+  stopovers      Location[] @relation("Stopovers")
+  availableSeats Int
+  totalSeats     Int
+  contribution   Float
+
+  preferences                        RidePreference?
+  bookingType                        BookingType                  @default(AUTOMATIC)
+  status                             RideStatus                   @default(DRAFT)
+  driverId                           Int
+  driver                             User                         @relation(fields: [driverId], references: [id])
+  vehicleId                          Int
+  vehicle                            Vehicle                      @relation(fields: [vehicleId], references: [id])
+  createdAt                          DateTime                     @default(now())
+  updatedAt                          DateTime                     @updatedAt
+  isBlocked                          Boolean                      @default(false)
+  estimatedArrivalTime               DateTime?
+  departureLocation                  Location                     @relation("RideDeparture", fields: [departureLocationId], references: [id])
+  destinationLocation                Location                     @relation("RideDestination", fields: [destinationLocationId], references: [id])
+  transactions                       Transaction[]
+  reviews                            Review[]
+  // This is just for clarity and analytics which shows how did the user post a ride, PAYMENT if paid posting fee,
+  // SUBSCRIPTION if had subscription, coupon if used coupons, FREE if had a granted a free posting
+  monitizationType                   MonetizationType             @default(PAYMENT)
+  postingSubscriptionId              Int?
+  subscription                       UserSubscription?            @relation(fields: [postingSubscriptionId], references: [id])
+  contributionCollectionMethod       ContributionCollectionMethod @default(VIA_PLATFORM)
+  bookings                           Booking[]
+  chatThread                         ChatThread?
+  bookingSeats                       BookingSeat[]
+  noShows                            NoShow[]
+  reports                            RideReport[]
+  startedAt                          DateTime?
+  completedAt                        DateTime?
+  publishedAt                        DateTime?
+  detourRadius                       Int?
+  extraKmPrice                       Float?                       @default(0)
+  cancelledAt                        DateTime?
+  cancellationReason                 String?
+  cancellationReviewed               Boolean?
+  cancellationReviewedAt             DateTime?
+  cancellationReviewedById           Int? // Admin who reviewed the cancellation
+  cancellationReviewer               User?                        @relation("RideCancellationReviewer", fields: [cancellationReviewedById], references: [id])
+  cancellationCountsAgainstAllowance YesNo                        @default(NO) // If YES, this cancellation counts toward  Driver cancellation allowance
+  isDeleted                          Boolean                      @default(false)
+  deletedAt                          DateTime? // When the ride was deleted, if applicable
+  blockedAt                          DateTime? // When the ride was blocked, if applicable
+  blockingReason                     String? // Reason for blocking the ride
+  blockerId                          Int? // User who blocked the ride
+  blocker                            User?                        @relation("RideBlocker", fields: [blockerId], references: [id])
+  isRideCompleteReminderSent         Boolean?
+  isThirtyMinReminderSent            Boolean?
+  isStartReminderSent                Boolean?
+  isSettled                          Boolean                      @default(false) // Whether the ride has been settled (e.g., all payments processed)
+  settlementFailedReason             String? // If settlement failed, reason for failure
+  paymentSessions                    PaymentSession[]
+  rideRequestMatches                 RideRequestMatch[]
+  d2dBookingRequests                 D2DBookingRequest[]
+  type                               RideType                     @default(P2P)
+  notifications                      Notification[]
+  isDriverCouponIssuedOnCompletion   Boolean                      @default(false)
+  settlementProcessingAt             DateTime?
+  rideRequestId                      Int?
+  rideRequest                        RideRequest?                 @relation(fields: [rideRequestId], references: [id], onDelete: SetNull)
+
+  // Bus route association
+  routeId Int?
+  route   BusRoute? @relation(fields: [routeId], references: [id])
+
+  // Recurring schedule association (a materialized occurrence of a departure)
+  routeDepartureId Int?
+  routeDeparture   BusRouteDeparture? @relation(fields: [routeDepartureId], references: [id])
+
+  @@index([routeId, departureTime])
+  @@unique([routeDepartureId, departureTime])
+}
+
+model BusRoute {
+  id         Int            @id @default(autoincrement())
+  operatorId Int
+  operator   User           @relation("OperatorRoutes", fields: [operatorId], references: [id])
+  originCity String
+  destCity   String
+  distanceKm Float
+  basePrice  Decimal        @db.Decimal(10, 2)
+  isActive   Boolean        @default(true)
+  stops      BusRouteStop[]
+  rides      Ride[]
+  departures BusRouteDeparture[]
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([originCity, destCity, isActive])
+}
+
+model BusRouteDeparture {
+  id        Int      @id @default(autoincrement())
+  routeId   Int
+  route     BusRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  timeOfDay String   // "HH:mm" 24h, operator local time
+  vehicleId Int
+  vehicle   Vehicle  @relation("VehicleScheduleDepartures", fields: [vehicleId], references: [id])
+  isActive  Boolean  @default(true)
+  rides     Ride[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([routeId, isActive])
+}
+
+model BusRouteStop {
+  id        Int      @id @default(autoincrement())
+  routeId   Int
+  route     BusRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  name      String
+  city      String
+  order     Int
+  latitude  Float?
+  longitude Float?
+
+  boardingBookings  Booking[] @relation("BookingBoardingStop")
+  alightingBookings Booking[] @relation("BookingAlightingStop")
+
+  @@index([routeId, order])
+}
+
+enum RideType {
+  D2D
+  P2P
+}
+
+enum VehicleCategory {
+  CAR
+  MOTORBIKE
+  BUS
+}
+
+model D2DBookingRequest {
+  id                     Int                     @id @default(autoincrement())
+  rideId                 Int
+  ride                   Ride                    @relation(fields: [rideId], references: [id])
+  passengerId            Int
+  passenger              User                    @relation("PassengerRequests", fields: [passengerId], references: [id])
+  pickupLocationId       Int                     @unique
+  dropoffLocationId      Int                     @unique
+  pickupLocation         Location                @relation("PickupLocation", fields: [pickupLocationId], references: [id])
+  dropoffLocation        Location                @relation("DropoffLocation", fields: [dropoffLocationId], references: [id])
+  detourDistance         Float?
+  pickupDetourDistance   Float?
+  droppoffDetourDistance Float?
+  totalAmount            Decimal                 @db.Decimal(10, 2)
+  status                 D2DBookingRequestStatus @default(POSTED)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  completedAt            DateTime?
+  acceptedAt             DateTime?
+  canceledAt             DateTime?
+  declinedAt             DateTime?
+  canceledBy             String?
+  confirmedAt            DateTime?
+  extraKms               Float?
+  extraKmsAmount         Decimal?                @db.Decimal(10, 2)
+  pickupExtraKms         Float?
+  dropoffExtraKms        Float?
+  reason                 String?
+  transactionId          Int?                    @unique
+  transaction            Transaction?            @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  bookingSeat            BookingSeat?
+  redeemedCoupns         RedeemedCoupon[]
+  paymentSession         PaymentSession[]
+  couponsIssued          Boolean                 @default(false)
+  expiredAt              DateTime?
+  disputedAt             DateTime?
+  disputeResolvedAt      DateTime?
+}
+
+enum D2DBookingRequestStatus {
+  POSTED
+  ACCEPTED
+  CONFIRMED
+  CANCELED
+  DECLINED
+  COMPLETED
+  EXPIRED
+  DISPUTED
+}
+
+enum YesNo {
+  YES
+  NO
+}
+
+model Booking {
+  id                 Int           @id @default(autoincrement())
+  rideId             Int
+  vehicleId          Int
+  transactionId      Int?          @unique
+  seats              Int
+  paymentTransaction Transaction?  @relation(fields: [transactionId], references: [id])
+  status             BookingStatus @default(PENDING)
+  ride               Ride          @relation(fields: [rideId], references: [id])
+  vehicle            Vehicle       @relation(fields: [vehicleId], references: [id])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  // This is just for clarity and analytics which shows how did the user book, PAYMENT if paid booking fee,
+  // SUBSCRIPTION if had subscription, coupon if used coupons, FREE if had a granted a free booking
+  monitizationType  MonetizationType @default(PAYMENT)
+  userId            Int
+  booker            User             @relation(fields: [userId], references: [id])
+  cancellerId       Int?
+  cancelledBy       User?            @relation("BookingCanceller", fields: [cancellerId], references: [id])
+  cancelledAt       DateTime?
+  reason            String?
+  bookingSeats      BookingSeat[]
+  redeemedCoupns    RedeemedCoupon[]
+  couponsIssued     Boolean          @default(false)
+  expiredAt         DateTime?
+  disputedAt        DateTime?
+  disputeResolvedAt DateTime?
+
+  // Bus stop fields
+  boardingStopId  Int?
+  boardingStop    BusRouteStop? @relation("BookingBoardingStop", fields: [boardingStopId], references: [id], onDelete: Restrict)
+  alightingStopId Int?
+  alightingStop   BusRouteStop? @relation("BookingAlightingStop", fields: [alightingStopId], references: [id], onDelete: Restrict)
+}
+
+model BookingSeat {
+  id             Int       @id @default(autoincrement())
+  bookingId      Int?
+  booking        Booking?  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  attendanceCode String    @unique
+  attendedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  rideId         Int
+  ride           Ride      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  isExpired      Boolean   @default(false) // If a seat is expired (e.g., ride cancelled, booking cancelled)
+  expireReason   String? // Reason for expiration
+  expiredAt      DateTime?
+
+  d2dBookingId Int?               @unique
+  d2dBooking   D2DBookingRequest? @relation(fields: [d2dBookingId], references: [id], onDelete: Cascade)
+  lockedUntil  DateTime?
+}
+
+model Vehicle {
+  id     Int  @id @default(autoincrement())
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  make        String // e.g., Toyota
+  model       String // e.g., Corolla
+  year        Int?
+  color       String
+  plateNumber String
+  category    VehicleCategory @default(CAR)
+  verified    Boolean         @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  capacity  Int      @default(4) // Number of seats available
+
+  rides              Ride[]
+  scheduleDepartures BusRouteDeparture[] @relation("VehicleScheduleDepartures")
+  files          Asset[]
+  defaultImageId Int?      @unique
+  defaultImage   Asset?    @relation("DefaultImage", fields: [defaultImageId], references: [id], onDelete: SetNull)
+  Booking        Booking[]
+
+  isAvailableForRental     Boolean            @default(false)
+  hourlyRate               Decimal?           @db.Decimal(10, 2)
+  dailyRate                Decimal?           @db.Decimal(10, 2)
+  securityDeposit          Decimal?           @db.Decimal(10, 2)
+  rentalDescription        String?
+  pickupLocationId         Int?               @unique
+  pickupLocation           Location?          @relation("VehiclePickupLocation", fields: [pickupLocationId], references: [id], onDelete: SetNull)
+  mileageLimit             Int?
+  fuelPolicy               FuelPolicy?
+  rentals                  CarRental[]
+  chauffeurServices        ChauffeurService[]
+  presenceAsCurrentVehicle DriverPresence?    @relation("DriverPresenceVehicle")
+  seatLayout               Json?
+
+  // Vehicle spec metadata (rental clients ask for these).
+  transmission Transmission?
+  fuelType     FuelType?
+  // Operational status: AVAILABLE by default; owner/admin can flip to
+  // MAINTENANCE / DISABLED. Filters out the vehicle from new bookings / rides.
+  status       VehicleStatus @default(AVAILABLE)
+  // Service tier — used by ride pricing & matchmaking filters.
+  tier         VehicleTier?
+
+  blockedRanges VehicleBlockedRange[]
+
+  // KYC for the vehicle (yellow card, insurance, authorization, photos).
+  // PENDING by default; admin promotes to APPROVED before vehicle can be
+  // used for rides / D2D / chauffeur / rentals.
+  kycStatus       KycStatus @default(PENDING)
+  kycReviewedAt   DateTime?
+  kycReviewedById Int?
+  kycReviewedBy   User?     @relation("VehicleKycReviewer", fields: [kycReviewedById], references: [id])
+  kycReviewNotes  String?
+
+  rideBids RideBid[]
+}
+
+// Owner / admin-set blocked date ranges for a vehicle (maintenance, owner
+// keeping the car, etc). Booking creation rejects overlap with active rentals
+// AND with these.
+model VehicleBlockedRange {
+  id        Int      @id @default(autoincrement())
+  vehicleId Int
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  from      DateTime
+  to        DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([vehicleId, from, to])
+}
+
+enum Transmission {
+  MANUAL
+  AUTOMATIC
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  MAINTENANCE
+  DISABLED
+}
+
+enum VehicleTier {
+  ECONOMY
+  PREMIUM
+}
+
+model CarRental {
+  id        Int     @id @default(autoincrement())
+  vehicleId Int
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  renterId  Int
+  renter    User    @relation("RenterRentals", fields: [renterId], references: [id], onDelete: Cascade)
+  ownerId   Int
+  owner     User    @relation("OwnerRentals", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  startDate             DateTime
+  endDate               DateTime
+  rentalType            RentalType
+  totalAmount           Decimal      @db.Decimal(10, 2)
+  securityDepositAmount Decimal      @db.Decimal(10, 2)
+  status                RentalStatus @default(REQUESTED)
+
+  pickupLocationId Int?      @unique
+  pickupLocation   Location? @relation("RentalPickupLocation", fields: [pickupLocationId], references: [id], onDelete: SetNull)
+  returnLocationId Int?      @unique
+  returnLocation   Location? @relation("RentalReturnLocation", fields: [returnLocationId], references: [id], onDelete: SetNull)
+  pickupNotes      String?
+  returnNotes      String?
+
+  approvedAt         DateTime?
+  declinedAt         DateTime?
+  activatedAt        DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellerId        Int?
+  cancelledBy        User?     @relation("RentalCancelledBy", fields: [cancellerId], references: [id], onDelete: SetNull)
+  cancellationReason String?
+
+  depositRefunded   Boolean   @default(false)
+  depositRefundedAt DateTime?
+
+  pickupReminderSent         Boolean   @default(false)
+  returnReminderSent         Boolean   @default(false)
+  overdueNotifiedAt          DateTime?
+  depositReleaseReminderSent Boolean   @default(false)
+
+  transactionId        Int?         @unique
+  transaction          Transaction? @relation("RentalTransaction", fields: [transactionId], references: [id], onDelete: SetNull)
+  depositTransactionId Int?         @unique
+  depositTransaction   Transaction? @relation("RentalDepositTransaction", fields: [depositTransactionId], references: [id], onDelete: SetNull)
+
+  chatThread    ChatThread?
+  reviews       Review[]
+  notifications Notification[]
+  reports       RideReport[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RentalSettings {
+  id                          Int      @id @default(autoincrement())
+  platformFeePercentage       Decimal  @default(15) @db.Decimal(5, 2)
+  maxRentalDurationDays       Int      @default(30)
+  minRentalDurationHours      Int      @default(1)
+  requestExpiryHours          Int      @default(24)
+  depositReleaseReminderHours Int      @default(24)
+  overdueGracePeriodHours     Int      @default(3)
+  // Cancellation refund tiers, percent of totalAmount returned to renter.
+  // Bucketed by hours before scheduled start.
+  cancelRefundPctOver24h      Decimal  @default(100) @db.Decimal(5, 2)
+  cancelRefundPct12To24h      Decimal  @default(80) @db.Decimal(5, 2)
+  cancelRefundPctUnder12h     Decimal  @default(50) @db.Decimal(5, 2)
+  noShowRefundPct             Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+}
+
+model ChauffeurService {
+  id          Int      @id @default(autoincrement())
+  vehicleId   Int?
+  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  passengerId Int
+  passenger   User     @relation("PassengerChauffeurServices", fields: [passengerId], references: [id], onDelete: Cascade)
+  driverId    Int
+  driver      User     @relation("DriverChauffeurServices", fields: [driverId], references: [id], onDelete: Cascade)
+
+  startDate   DateTime
+  endDate     DateTime
+  serviceType ChauffeurServiceType
+  totalAmount Decimal              @db.Decimal(10, 2)
+  status      ChauffeurStatus      @default(REQUESTED)
+
+  pickupLocationId  Int?      @unique
+  pickupLocation    Location? @relation("ChauffeurPickupLocation", fields: [pickupLocationId], references: [id], onDelete: SetNull)
+  dropoffLocationId Int?      @unique
+  dropoffLocation   Location? @relation("ChauffeurDropoffLocation", fields: [dropoffLocationId], references: [id], onDelete: SetNull)
+  pickupNotes       String?
+  dropoffNotes      String?
+
+  acceptedAt         DateTime?
+  declinedAt         DateTime?
+  activatedAt        DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellerId        Int?
+  cancelledBy        User?     @relation("ChauffeurCancelledBy", fields: [cancellerId], references: [id], onDelete: SetNull)
+  cancellationReason String?
+
+  pickupReminderSent     Boolean   @default(false)
+  completionReminderSent Boolean   @default(false)
+  overdueNotifiedAt      DateTime?
+
+  transactionId Int?         @unique
+  transaction   Transaction? @relation("ChauffeurTransaction", fields: [transactionId], references: [id], onDelete: SetNull)
+
+  chatThread    ChatThread?
+  reviews       Review[]
+  notifications Notification[]
+  reports       RideReport[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChauffeurSettings {
+  id                      Int      @id @default(autoincrement())
+  platformFeePercentage   Decimal  @default(15) @db.Decimal(5, 2)
+  maxServiceDurationDays  Int      @default(30)
+  minServiceDurationHours Int      @default(1)
+  requestExpiryHours      Int      @default(24)
+  overdueGracePeriodHours Int      @default(3)
+  // Cancellation refund tiers — same shape as RentalSettings.
+  cancelRefundPctOver24h  Decimal  @default(100) @db.Decimal(5, 2)
+  cancelRefundPct12To24h  Decimal  @default(80) @db.Decimal(5, 2)
+  cancelRefundPctUnder12h Decimal  @default(50) @db.Decimal(5, 2)
+  noShowRefundPct         Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+model Asset {
+  id                 Int            @id @default(autoincrement())
+  url                String
+  type               AssetType
+  category           AssetCategory
+  publicId           String
+  vehicleId          Int?
+  userId             Int?           @unique
+  createdAt          DateTime       @default(now())
+  user               User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle            Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  defaultedToVehicle Vehicle?       @relation("DefaultImage")
+  licenseForUser     User?          @relation("LicenseImage")
+  frontLicense       LicenseImages? @relation("FrontLicenseImage")
+  backLicense        LicenseImages? @relation("BackLicenseImage")
+}
+
+model SubscriptionPlan {
+  id                  Int                   @id @default(autoincrement())
+  name                String                @unique
+  description         String?
+  type                SubscriptionType
+  duration            SubscriptionDuration? // Optional, can be null for promo
+  subscriptionEndDate DateTime? // The default subscription end date applied to any user subscribing to this plan
+  availableUntil      DateTime? // Last date users can subscribe to this plan
+  category            PlanCategory          @default(COMMERCIAL)
+  price               Float
+  isActive            Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  subscriptions       UserSubscription[]
+  transactions        Transaction[]
+}
+
+enum PlanCategory {
+  COMMERCIAL // Normal paid plans
+  PROMO // Free or promotional plans
+}
+
+model UserSubscription {
+  id          Int              @id @default(autoincrement())
+  userId      Int
+  planId      Int
+  startDate   DateTime         @default(now())
+  endDate     DateTime
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  plan        SubscriptionPlan @relation(fields: [planId], references: [id])
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ridesPosted Ride[]
+  planData    Json?
+
+  @@index([userId, isActive])
+}
+
+enum BookingStatus {
+  APPROVED
+  DECLINED
+  PENDING
+  CANCELLED
+  COMPLETED
+  EXPIRED
+  DISPUTED
+}
+
+model ChatThread {
+  id        Int           @id @default(autoincrement())
+  ownerId   Int?
+  rideId    Int?          @unique
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+  users     User[]        @relation("UsersOnThreads")
+  owner     User?         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bookingId Int?
+  ride      Ride?         @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  rentalId Int?       @unique
+  rental   CarRental? @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  chauffeurServiceId Int?              @unique
+  chauffeurService   ChauffeurService? @relation(fields: [chauffeurServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, rideId])
+}
+
+model ChatMessage {
+  id        Int           @id @default(autoincrement())
+  threadId  Int
+  senderId  Int
+  content   String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  thread    ChatThread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender    User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  readBy    MessageRead[] // Track who has read this message
+}
+
+model MessageRead {
+  id        Int         @id @default(autoincrement())
+  messageId Int
+  userId    Int
+  readAt    DateTime    @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId]) // Each user can only mark a message as read once
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  BUS_OPERATOR
+}
+
+enum Language {
+  EN
+  FR
+}
+
+enum Status {
+  ACTIVE
+  SUSPENDED
+}
+
+enum SubscriptionType {
+  PASSENGER
+  DRIVER
+  BOTH
+}
+
+enum SubscriptionDuration {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum BookingType {
+  AUTOMATIC
+  MANUAL
+}
+
+enum RideStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum AssetType {
+  IMAGE
+  DOCUMENT
+  VIDEO
+}
+
+enum AssetCategory {
+  VEHICLE_IMAGE
+  LICENSE
+  PROFILE_PICTURE
+  YELLOW_CARD
+  VEHICLE_INSURANCE
+  VEHICLE_AUTHORIZATION
+  TRIP_EVIDENCE
+  OTHER
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FeeType {
+  POSTING
+  BOOKING
+  DEFAULT_PLATFORM_FEE
+}
+
+model FeeSetting {
+  id        Int      @id @default(autoincrement())
+  type      FeeType // enum: POSTING, BOOKING, etc.
+  amount    Float
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Transaction {
+  id                Int               @id @default(autoincrement())
+  transactionId     String?           @unique @default(uuid())
+  userId            Int
+  rideId            Int?
+  type              TransactionType // enum: RIDE_POSTING, BOOKING, etc
+  amount            Float // original amount intended to be charged for the transaction platformAmount + driverAmount
+  status            TransactionStatus @default(PENDING)
+  paymentProvider   PaymentProvider   @default(STRIPE)
+  externalReference String?           @unique // for external transaction tracking
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  refundedAmount    Float             @default(0) // amount refunded if any
+  isRefunded        Boolean           @default(false) // if the transaction has been refunded
+  planId            Int?
+
+  user                  User               @relation(fields: [userId], references: [id])
+  ride                  Ride?              @relation(fields: [rideId], references: [id])
+  booking               Booking?
+  plan                  SubscriptionPlan?  @relation(fields: [planId], references: [id])
+  currency              String             @default("RWF") // Currency code, e.g., RWF, USD, EUR
+  platformAmount        Float
+  driverAmount          Float              @default(0) // Amount that goes to the driver
+  refundedAt            DateTime?
+  // trasfer driverAmount to driver
+  stripeChargeId        String?            @unique
+  stripeTransferId      String?            @unique // For tracking transfers to the driver, if applicable
+  transferFailureReason String? // Reason for transfer failure, if any
+  // stripeChargeAccount  StripeChargeAccount @default(PLATFORM) // This is to determine which account the charged funds against(settle)
+  isDriverPaid          Boolean            @default(false) // This will mean that the driver potion has been transered to a connected accout
+  driverNetAmountPaid   Float? // Net amount transfered to driver after charges(stripe fee)
+  driverStripeFee       Float? // Stripe fee applied to the driver amount
+  platformStripeFee     Float? // Stripe fee applied to the platform amount
+  platformNetAmount     Float? // Net platform amount after external charges(stripe fee) and tax if applied
+  // isTransferReversed          Boolean           @default(false)
+  grossReceivedAmount   Float? // Gross amount charged from (paid by)  a customer
+  netReceivedAmount     Float? // Net amount received after provider fees (e.g., Stripe fees)
+  // platformGrossReceivedAmount Float? // Gross platform share based on amount chareged from the customer
+  // driverGrossReceivedAmount   Float? // Gross driver share  based on amount chareged from the customer
+  billingAddress        Json? // Billing address for the transaction, if applicable
+  transactionDate       DateTime? // Date when the transaction occurred
+  paymentReceipt        PaymentReceipt?
+  paymentSessionId      String?            @unique
+  paymentSession        PaymentSession?    @relation(fields: [paymentSessionId], references: [id])
+  discountPct           Decimal            @default(0) @db.Decimal(5, 2)
+  discount              Decimal            @default(0) @db.Decimal(5, 2)
+  couponsUsed           Decimal            @default(0) @db.Decimal(5, 2)
+  d2dBookingReq         D2DBookingRequest?
+  disputedAt            DateTime?
+  disputeResolvedAt     DateTime?
+  driverPaidAt          DateTime?
+
+  rental        CarRental? @relation("RentalTransaction")
+  rentalDeposit CarRental? @relation("RentalDepositTransaction")
+
+  chauffeurService ChauffeurService? @relation("ChauffeurTransaction")
+}
+
+enum TransactionType {
+  RIDE_POSTING
+  RIDE_BOOKING
+  SUBSCRIPTION
+  CAR_RENTAL
+  CAR_RENTAL_DEPOSIT
+  CHAUFFEUR_SERVICE
+  COMMISSION_DEBIT
+  WALLET_CREDIT
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  ONHOLD
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum MonetizationType {
+  SUBSCRIPTION
+  PAYMENT
+  COUPON
+  FREE
+}
+
+// VIA_PLATFORM = Payment collected through the platform (Stripe)
+// OFF_PLATFORM = Driver is responsible for collecting contribution from passengers
+enum ContributionCollectionMethod {
+  VIA_PLATFORM
+  OFF_PLATFORM
+}
+
+model RidePreference {
+  id              Int         @id @default(autoincrement())
+  rideId          Int?        @unique
+  smoking         Boolean     @default(false)
+  pets            Boolean     @default(false)
+  airConditioning Boolean     @default(false)
+  ladiesOnly      Boolean     @default(false) // Only for ladies
+  bicycleSupport  Boolean     @default(false) // Support for carrying bicycles
+  snowTires       Boolean     @default(false)
+  luggageSize     LuggageSize @default(NONE)
+  luggageCount    Int         @default(0) // Number of pieces of luggage
+  additionalNotes String? // Additional notes for the ride preference
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  gentsOnly       Boolean     @default(false) // Only for gents
+  skiRack         Boolean     @default(false)
+
+  ride Ride? @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  userId Int?            @unique // Optional, if the preference is set by a user
+  user   User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  music  MusicPreference @default(NOT_AT_ALL)
+}
+
+model NoShow {
+  id           Int               @id @default(autoincrement())
+  rideId       Int
+  userId       Int // The one reported as not showing up
+  reportedById Int // The reporter
+  reason       String?
+  status       NoShowStatus      @default(PENDING) // for admin handling
+  reviewNotes  String?
+  resolvedAt   DateTime?
+  reviewedById Int? // Admin who reviewed the no-show
+  reviewedBy   User?             @relation("NoShowReviewer", fields: [reviewedById], references: [id])
+  reportType   NoShowReportType?
+
+  createdAt DateTime @default(now())
+
+  ride       Ride @relation(fields: [rideId], references: [id])
+  user       User @relation(name: "NoShowUser", fields: [userId], references: [id])
+  reportedBy User @relation(name: "NoShowReportedBy", fields: [reportedById], references: [id])
+
+  @@unique([rideId, userId, reportedById]) // Prevent duplicate no-show reports for the same ride and user
+}
+
+enum NoShowStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum NoShowReportType {
+  DRIVER_REPORTED_PASSENGER
+  PASSENGER_REPORTED_DRIVER
+}
+
+enum LuggageSize {
+  NONE
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+enum MusicPreference {
+  LOW
+  MEDIUM
+  HIGH
+  NOT_AT_ALL
+}
+
+model Location {
+  id            Int                       @id @default(autoincrement())
+  country       String                    @default("Rwanda") // Always Rwanda for now
+  region        String // e.g. Kigali, Eastern Province, Western Province
+  regionCode    String?
+  city          String // e.g. Montreal, Toronto
+  address       String? // e.g. 123 King St W, Apt 200
+  description   String? // any description about the location
+  locationName  String // Landmark or nickname (e.g. "Union Station")
+  latitude      Float
+  longitude     Float
+  locationPoint Unsupported("geography")?
+
+  rideStopoverId Int?
+  rideStopover   Ride? @relation("Stopovers", fields: [rideStopoverId], references: [id], onDelete: Cascade)
+
+  rideDeparture          Ride?        @relation("RideDeparture")
+  rideDestination        Ride?        @relation("RideDestination")
+  rideRequestOrigin      RideRequest? @relation("RideRequestOrigin")
+  rideRequestDestination RideRequest? @relation("RideRequestDestination")
+
+  // D2D booking requests location
+  d2dPickupRequest   D2DBookingRequest? @relation("PickupLocation")
+  d2d2DropoffRequest D2DBookingRequest? @relation("DropoffLocation")
+
+  vehiclePickupLocation Vehicle?   @relation("VehiclePickupLocation")
+  rentalPickupLocation  CarRental? @relation("RentalPickupLocation")
+  rentalReturnLocation  CarRental? @relation("RentalReturnLocation")
+
+  chauffeurPickup  ChauffeurService? @relation("ChauffeurPickupLocation")
+  chauffeurDropoff ChauffeurService? @relation("ChauffeurDropoffLocation")
+
+  @@index([region])
+  @@index([city])
+  @@index([city, region])
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+}
+
+model Notification {
+  id            Int          @id @default(autoincrement())
+  title         String
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message       String
+  isRead        Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  rideRequestId Int?
+  rideId        Int?
+  ride          Ride?        @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  rideRequest   RideRequest? @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+
+  rentalId Int?
+  rental   CarRental? @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  chauffeurServiceId Int?
+  chauffeurService   ChauffeurService? @relation(fields: [chauffeurServiceId], references: [id], onDelete: Cascade)
+}
+
+//coupon sources
+enum CouponSource {
+  RIDE
+  REFERRAL
+  REFUND
+}
+
+model Coupon {
+  id               Int              @id @default(autoincrement())
+  userId           Int
+  quantity         Int              @default(0)
+  originalQuantity Int
+  user             User             @relation(fields: [userId], references: [id])
+  source           CouponSource
+  redeemed         Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  redeemedAt       DateTime?
+  expiresAt        DateTime
+  redeemedCoupons  RedeemedCoupon[]
+  redeemReason     String?
+}
+
+enum CouponTarget {
+  RIDE_BOOKING
+  RIDE_POSTING
+  PASSENGER_SUBSCRIPTION
+  DRIVER_SUBSCRIPTION
+  CAR_RENTAL
+  BOTH_SUBSCRIPTION
+}
+
+model CouponRedemptionRule {
+  id              Int          @id @default(autoincrement())
+  target          CouponTarget @unique
+  requiredCoupons Int
+  description     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model RedeemedCoupon {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  couponId    Int
+  bookingId   Int?
+  redeemedQty Int
+  createdAt   DateTime @default(now())
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon           Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  booking          Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  transactionId    Int?
+  paymentSessionId String?
+
+  d2dBookingId Int?
+  d2dBooking   D2DBookingRequest? @relation(fields: [d2dBookingId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id     Int        @id @default(autoincrement())
+  rating Int
+  review String?
+  type   ReviewType @default(NORMAL)
+
+  userId   Int? // optional now
+  driverId Int
+  rideId   Int?
+
+  reviewer User? @relation("UserReviews", fields: [userId], references: [id])
+  driver   User  @relation("DriverReviews", fields: [driverId], references: [id])
+  ride     Ride? @relation(fields: [rideId], references: [id])
+
+  rentalId Int?
+  rental   CarRental? @relation(fields: [rentalId], references: [id], onDelete: SetNull)
+
+  chauffeurServiceId Int?
+  chauffeurService   ChauffeurService? @relation(fields: [chauffeurServiceId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ReviewType {
+  NORMAL // user-submitted
+  CANCELLATION // system-generated cancellation review
+  NO_SHOW // system-generated no-show review
+  RENTAL
+  CHAUFFEUR
+}
+
+enum RentalStatus {
+  REQUESTED
+  APPROVED
+  DECLINED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum RentalType {
+  HOURLY
+  DAILY
+}
+
+enum FuelPolicy {
+  FULL_TO_FULL
+  SAME_LEVEL
+}
+
+enum ChauffeurStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum ChauffeurServiceType {
+  HOURLY
+  DAILY
+}
+
+model ContactMessage {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String
+  subject     String
+  message     String
+  phoneNumber String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PaymentSession {
+  id                    String               @id @default(uuid())
+  userId                Int
+  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount                Decimal              @db.Decimal(10, 2) // base charge
+  totalAmount           Decimal              @db.Decimal(10, 2) // total charge
+  currency              String               @default("RWF")
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  rideId                Int?
+  ride                  Ride?                @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  platformAmount        Decimal              @default(0) @db.Decimal(10, 2) // Amount that goes to the platform
+  driverAmount          Decimal              @default(0) @db.Decimal(10, 2) // Amount that goes to the driver
+  billingAddress        Json? // Billing address for the transaction, if applicable
+  transactionType       TransactionType
+  planSnapshot          Json?
+  stripeCustomerId      String?
+  stripePaymentIntentId String?              @unique
+  status                PaymentSessionStatus @default(PENDING)
+  transaction           Transaction?
+  seatsToBook           Int?
+  // monetizationType      MonetizationType?
+  discountPct           Decimal              @default(0) @db.Decimal(5, 2)
+  discountAmount        Decimal              @default(0) @db.Decimal(10, 2)
+  couponsToConsume      Int                  @default(0)
+  paymentProvider       PaymentProvider      @default(STRIPE)
+  d2dBookingId          Int?
+  d2dBooking            D2DBookingRequest?   @relation(fields: [d2dBookingId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentSessionStatus {
+  PENDING
+  FINALIZING
+  COMPLETED
+  FAILED
+  CANCELLED
+  PAYMENT_AUTHORIZING
+  PAYMENT_AUTHORIZED
+}
+
+model PaymentReceipt {
+  id            Int           @id @default(autoincrement())
+  transactionId Int           @unique
+  transaction   Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  invoiceNumber String
+  invoiceDate   DateTime
+  email         String
+  sentAt        DateTime?
+  status        ReceiptStatus @default(PENDING)
+  errorMessage  String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  subTotal      Float
+  totalAmount   Float
+  taxAmount     Float?
+  currency      String
+}
+
+enum ReceiptStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model CommissionSettings {
+  id        Int      @id @default(autoincrement())
+  rate      Decimal  @default(10) @db.Decimal(5, 2) // e.g. 10.00 = 10%
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WalletSettings {
+  id                    Int      @id @default(autoincrement())
+  defaultDebtLimitCents Int      @default(500000)
+  enforceDebtLimit      Boolean  @default(false)
+  updatedAt             DateTime @updatedAt
+}
+
+model D2DSetting {
+  id                 Int      @id @default(autoincrement())
+  maxRadiusKm        Int      @default(25)
+  // extraKmThreshold               Int?
+  maxPricePerExtraKm Decimal? @default(1.00) @db.Decimal(5, 2)
+  // cancellationFeeAfterAccepted   Float?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model RideRequest {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  originId        Int?      @unique
+  destinationId   Int?      @unique
+  date            DateTime
+  timeWindowStart DateTime?
+  timeWindowEnd   DateTime?
+  seats           Int       @default(1)
+
+  // proximity in meters (e.g., 5000 = 5km). Optional, default provided.
+  // proximityMeters Int @default(25000)
+  status    RideRequestStatus @default(DRAFT)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id])
+  matches       RideRequestMatch[]
+  origin        Location?          @relation("RideRequestOrigin", fields: [originId], references: [id])
+  destination   Location?          @relation("RideRequestDestination", fields: [destinationId], references: [id])
+  notifications Notification[]
+  rideType      RideType
+  closeAt       DateTime?
+  expiredAt     DateTime?
+  openedAt      DateTime?
+
+  // text-only fields for P2P:
+  originCity      String
+  originProvince  String
+  destCity        String
+  destProvince    String
+  description     String?
+  // Passenger's proposed fare for on-demand ride requests (inDrive-style).
+  // When a driver accepts, this becomes the created Ride's contribution.
+  proposedFare    Decimal?        @db.Decimal(10, 2)
+  vehicleCategory VehicleCategory @default(CAR)
+  rides           Ride[]
+  bids            RideBid[]
+}
+
+enum RideRequestStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  EXPIRED
+}
+
+enum RideBidStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model RideRequestMatch {
+  id        Int         @id @default(autoincrement())
+  requestId Int
+  rideId    Int
+  matchedAt DateTime    @default(now())
+  request   RideRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  ride      Ride        @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, rideId])
+}
+
+model RideBid {
+  id              Int            @id @default(autoincrement())
+  rideRequestId   Int
+  driverId        Int
+  vehicleId       Int
+  bidAmount       Decimal        @db.Decimal(10, 2)
+  status          RideBidStatus  @default(PENDING)
+  createdAt       DateTime       @default(now())
+  resolvedAt      DateTime?
+
+  rideRequest     RideRequest    @relation(fields: [rideRequestId], references: [id], onDelete: Cascade)
+  driver          User           @relation("DriverRideBids", fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@unique([rideRequestId, driverId])
+  @@index([rideRequestId, status])
+  @@index([driverId, status])
+}
+
+model DriverPresence {
+  userId           Int      @id
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentVehicleId Int?     @unique
+  currentVehicle   Vehicle? @relation("DriverPresenceVehicle", fields: [currentVehicleId], references: [id])
+  latitude         Float
+  longitude        Float
+  accuracy         Float?
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+
+  @@index([updatedAt])
+  // Composite btree; useful for latitude-anchored range scans. A true bbox
+  // query on both axes would benefit more from PostGIS GiST — revisit if
+  // presence volume grows.
+  @@index([latitude, longitude])
+}
+
+// User report against another party tied to a specific trip (ride, chauffeur, or rental).
+// Exactly one of rideId / chauffeurServiceId / rentalId must be set — enforced in the
+// service layer. Admin reviews via the admin tabs; flagged rows are highlighted.
+model RideReport {
+  id                 Int               @id @default(autoincrement())
+  rideId             Int?
+  ride               Ride?             @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  chauffeurServiceId Int?
+  chauffeurService   ChauffeurService? @relation(fields: [chauffeurServiceId], references: [id], onDelete: Cascade)
+  rentalId           Int?
+  rental             CarRental?        @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  reporterId    Int
+  reporter      User @relation("ReportReporter", fields: [reporterId], references: [id])
+  subjectUserId Int
+  subject       User @relation("ReportSubject", fields: [subjectUserId], references: [id])
+
+  reason       String
+  status       ReportStatus @default(OPEN)
+  reviewNotes  String?
+  reviewedById Int?
+  reviewedBy   User?        @relation("ReportReviewer", fields: [reviewedById], references: [id])
+  reviewedAt   DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@index([rideId])
+  @@index([chauffeurServiceId])
+  @@index([rentalId])
+  @@index([status])
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+}
+
+// Admin-configurable fare rules per (vehicleCategory, rideType). Used to
+// suggest a proposedFare in the passenger ride-request flow and to compute
+// the commission debited from the driver wallet on completion.
+//
+// The unique (vehicleCategory, rideType, isActive) lets you keep one active
+// rule plus historical inactive rows. commissionPercent overrides the
+// singleton CommissionSettings.rate when a matching active row exists.
+model PricingSettings {
+  id                Int             @id @default(autoincrement())
+  vehicleCategory   VehicleCategory
+  rideType          RideType
+  baseFare          Decimal         @db.Decimal(10, 2)
+  perKm             Decimal         @db.Decimal(10, 2)
+  perMinute         Decimal         @db.Decimal(10, 2)
+  minimumFare       Decimal         @db.Decimal(10, 2)
+  commissionPercent Decimal         @default(10) @db.Decimal(5, 2)
+  currency          String          @default("RWF")
+  isActive          Boolean         @default(true)
+  effectiveFrom     DateTime        @default(now())
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([vehicleCategory, rideType, isActive])
+}

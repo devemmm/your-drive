@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>YourDrive — Navigation Hierarchy</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161a22;
+    --panel-2: #1c2230;
+    --line: #242a39;
+    --text: #e6e9ef;
+    --muted: #8b93a7;
+    --accent: #4f8cff;
+    --good: #1fbf75;
+    --warn: #f0a83a;
+    --bad: #ef5d6f;
+    --pill: #2a3142;
+    --radius: 10px;
+    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  body { line-height: 1.45; font-size: 14px; }
+  a { color: var(--accent); text-decoration: none; }
+  header.top {
+    padding: 28px 32px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 24px;
+  }
+  header.top h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  header.top .sub { color: var(--muted); font-size: 13px; }
+  .tabs {
+    display: flex; gap: 6px; padding: 16px 32px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .tab {
+    background: transparent; color: var(--muted); border: 1px solid var(--line);
+    border-bottom: none; padding: 8px 14px; border-radius: 8px 8px 0 0;
+    cursor: pointer; font: inherit; font-weight: 600;
+  }
+  .tab.active { color: var(--text); background: var(--panel); border-color: var(--line); position: relative; top: 1px; }
+  main { padding: 24px 32px 64px; max-width: 1480px; margin: 0 auto; }
+  .grid {
+    display: grid; gap: 24px;
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .card h3 { margin: 16px 0 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 18px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--pill); color: var(--text); border-radius: 999px;
+    padding: 3px 10px; font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .pill.icon-ham::before { content: "☰"; }
+  .pill.icon-back::before { content: "←"; }
+  .pill.icon-good::before { content: "✓"; color: var(--good); }
+  .pill.icon-warn::before { content: "!"; color: var(--warn); }
+  .pill.icon-bad::before  { content: "✕"; color: var(--bad); }
+  .pill.icon-tag::before  { content: "·"; }
+  .pill.good { background: rgba(31,191,117,0.14); color: #6cdba6; }
+  .pill.warn { background: rgba(240,168,58,0.14); color: #f0c98a; }
+  .pill.bad  { background: rgba(239,93,111,0.14); color: #ff8a98; }
+  .pill.muted { color: var(--muted); }
+  .tree { font-family: var(--mono); font-size: 12.5px; }
+  .node {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 8px; border-radius: 8px;
+  }
+  .node:hover { background: var(--panel-2); }
+  .node .name { font-weight: 600; color: var(--text); }
+  .node .path { color: var(--muted); font-size: 11.5px; }
+  .node .meta { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  ul.tree-list { list-style: none; padding-left: 0; margin: 0; }
+  ul.tree-list ul { list-style: none; padding-left: 18px; margin: 0; border-left: 1px dashed var(--line); margin-left: 14px; }
+  .group-label {
+    margin: 18px 0 6px;
+    color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
+  }
+  .side h3 { margin-top: 0; }
+  .rules { margin: 0; padding-left: 18px; }
+  .rules li { margin: 8px 0; }
+  .kbd { font-family: var(--mono); background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .note {
+    border-left: 3px solid var(--accent); background: rgba(79,140,255,0.06);
+    padding: 10px 12px; border-radius: 4px; margin: 14px 0; font-size: 13px;
+  }
+  .note.bad  { border-color: var(--bad);  background: rgba(239,93,111,0.06); }
+  .note.warn { border-color: var(--warn); background: rgba(240,168,58,0.06); }
+  .note.good { border-color: var(--good); background: rgba(31,191,117,0.06); }
+  .toggle { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; }
+  .switch {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
+    display: inline-flex; padding: 3px; gap: 2px;
+  }
+  .switch button {
+    border: 0; background: transparent; color: var(--muted); padding: 4px 10px;
+    border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600; font-size: 12px;
+  }
+  .switch button.active { background: var(--accent); color: white; }
+  .panel-hidden { display: none; }
+  .role-badge {
+    display: inline-flex; gap: 6px; align-items: center;
+    padding: 4px 10px; border-radius: 999px; background: var(--panel-2);
+    color: var(--muted); font-size: 12px; font-weight: 600;
+  }
+  .role-badge.driver { background: rgba(79,140,255,0.14); color: #9ec0ff; }
+  .role-badge.passenger { background: rgba(31,191,117,0.14); color: #6cdba6; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>YourDrive — Mobile Navigation Hierarchy</h1>
+    <div class="sub">Snapshot of <span class="kbd">mobile/src/app</span> · branch <span class="kbd">feat/pencil-design-system</span></div>
+  </div>
+  <div class="toggle">
+    <span>Role:</span>
+    <span class="switch" id="roleSwitch">
+      <button data-role="passenger" class="active">Passenger</button>
+      <button data-role="driver">Driver</button>
+    </span>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="current">Current</button>
+  <button class="tab" data-tab="proposed">Proposed</button>
+  <button class="tab" data-tab="diff">Diff / Action items</button>
+</div>
+
+<main>
+
+<!-- ========================= CURRENT ========================= -->
+<section id="panel-current" class="grid">
+  <div class="card">
+    <h2>Current navigation</h2>
+    <p style="color:var(--muted); margin:6px 0 0">
+      Today every top-level destination is opened from the drawer, but each one mounts as a
+      <em>separate stack outside the drawer</em>. They all render a back arrow that points to <span class="kbd">/(drawer)</span>,
+      so the hamburger is never visible after the first hop.
+    </p>
+
+    <div class="legend">
+      <span class="pill icon-ham">hamburger here</span>
+      <span class="pill icon-back">back arrow here</span>
+      <span class="pill bad icon-bad">issue</span>
+      <span class="pill warn icon-warn">inconsistent</span>
+      <span class="pill muted icon-tag">role-gated</span>
+    </div>
+
+    <div class="group-label">Root stack — src/app/_layout.tsx</div>
+    <ul class="tree-list tree">
+      <li>
+        <div class="node">
+          <span class="name">(auth)</span><span class="path">— welcome / login / register / forgot / terms</span>
+          <span class="meta"><span class="pill muted">unauthenticated</span></span>
+        </div>
+      </li>
+      <li>
+        <div class="node">
+          <span class="name">onboarding</span><span class="path">— verify-phone, passenger, driver</span>
+        </div>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">(drawer)</span><span class="path">— authenticated shell</span>
+          <span class="meta"><span class="pill icon-ham">drawer host</span></span>
+        </div>
+        <ul>
+          <li>
+            <div class="node">
+              <span class="name">index</span><span class="path">— Home (map)</span>
+              <span class="meta"><span class="pill icon-ham">hamburger button</span><span class="pill good icon-good">correct</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">wallet</span><span class="path">— ScreenHeader, onBack → /(drawer)</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill bad icon-bad">should be ☰</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">chat</span><span class="path">— ScreenHeader, onBack → /(drawer)</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill bad icon-bad">should be ☰</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">profile</span><span class="path">— ScreenHeader (no onBack → router.back)</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill bad icon-bad">should be ☰</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">rides</span><span class="path">— ScreenHeader</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill warn icon-warn">drawer-hidden item</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">post</span><span class="path">— &lt;Redirect href="/post-ride" /&gt;</span>
+              <span class="meta"><span class="pill warn icon-warn">indirect redirect</span></span>
+            </div>
+          </li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="group-label" style="margin-top:18px">Top-level routes <em style="text-transform:none; color:var(--muted)">(outside the drawer)</em></div>
+        <ul class="tree-list" style="padding-left:0; margin-left:0; border:0">
+          <li>
+            <div class="node">
+              <span class="name">post-ride/</span><span class="path">— index, /[ride] flow</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill bad icon-bad">should be ☰</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">rental/</span><span class="path">— index (BrowseScreen), [id]</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill bad icon-bad">root → ☰  ·  detail → ←</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">chauffeur/</span><span class="path">— index, [id], service/[id], availability</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill bad icon-bad">root → ☰  ·  detail → ←</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">ride-request/</span><span class="path">— open (driver inbox), [id]</span>
+              <span class="meta"><span class="pill muted icon-tag">driver</span><span class="pill warn icon-warn">not in drawer menu</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">ride/</span><span class="path">— [id]/{index,active,complete,manifest}, search-results</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill good icon-good">inner screen — correct</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">vehicle/</span><span class="path">— index, add, [id]</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill good icon-good">inner screen — correct</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">transactions/</span><span class="path">— index</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill good icon-good">inner screen — correct</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">notifications/</span><span class="path">— index</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill good icon-good">inner screen — correct</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">chat/[threadId]</span><span class="path">— message thread</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill good icon-good">inner screen — correct</span></span>
+            </div>
+          </li>
+          <li>
+            <div class="node">
+              <span class="name">profile/edit</span><span class="path">— edit profile</span>
+              <span class="meta"><span class="pill icon-back">back arrow</span><span class="pill good icon-good">inner screen — correct</span></span>
+            </div>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <aside class="card side">
+    <h3>Problems in the current layout</h3>
+    <ol class="rules">
+      <li><strong>Top-level screens use a back arrow.</strong> Wallet / Chat / Profile / Post a Ride / Rent a Car / Hire a Driver are conceptually peers of Home, but their header back arrow just calls <span class="kbd">router.replace("/(drawer)")</span>. The hamburger disappears as soon as you leave Home.</li>
+      <li><strong>Drawer hides what the drawer is for.</strong> <span class="kbd">My Rides</span>, <span class="kbd">Post a Ride</span>, <span class="kbd">Chat</span>, <span class="kbd">Profile</span> are declared in the drawer with <span class="kbd">drawerItemStyle: display:none</span>, then re-listed inside <span class="kbd">DrawerContent.tsx</span>. The two lists drift.</li>
+      <li><strong>Home is not in the drawer menu.</strong> Once you leave Home, the only way back is the wallet's back arrow → which works but contradicts the hamburger pattern.</li>
+      <li><strong>No driver inbox shortcut.</strong> <span class="kbd">/ride-request/open</span> exists but is only reached from Profile → "View open ride requests". It should be a first-class entry for drivers.</li>
+      <li><strong>Map ignores theme.</strong> <span class="kbd">HomeScreen</span> renders a <span class="kbd">MapView</span> with no <span class="kbd">customMapStyle</span>, so in dark mode the map stays light.</li>
+      <li><strong>Drawer header reads white in dark mode.</strong> Likely the <span class="kbd">SafeAreaView</span> top inset on the drawer is not painted with <span class="kbd">colors.background</span> (or the status bar style isn't reacting to <span class="kbd">resolved</span>).</li>
+    </ol>
+  </aside>
+</section>
+
+<!-- ========================= PROPOSED ========================= -->
+<section id="panel-proposed" class="grid panel-hidden">
+  <div class="card">
+    <h2>Proposed navigation</h2>
+    <p style="color:var(--muted); margin:6px 0 0">
+      Every destination reachable from the drawer becomes a true top-level stack inside <span class="kbd">(drawer)</span>.
+      The header on the root of each top-level stack shows the <strong>hamburger</strong>; child screens push onto that
+      stack and show a real <strong>back arrow</strong> (<span class="kbd">navigation.pop()</span>).
+    </p>
+
+    <div class="legend">
+      <span class="pill icon-ham">hamburger</span>
+      <span class="pill icon-back">back (pop)</span>
+      <span class="pill good icon-good">unchanged file</span>
+      <span class="pill muted icon-tag">driver-only</span>
+      <span class="pill" style="background: rgba(79,140,255,0.14); color:#9ec0ff">new</span>
+    </div>
+
+    <div class="group-label">(drawer) — one stack per drawer item</div>
+    <ul class="tree-list tree">
+
+      <li>
+        <div class="node">
+          <span class="name">home/</span><span class="path">— map (passenger) · live requests (driver)</span>
+          <span class="meta"><span class="pill icon-ham">hamburger</span><span class="pill" style="background: rgba(79,140,255,0.14); color:#9ec0ff">role-aware</span></span>
+        </div>
+        <ul>
+          <li class="passenger-only"><div class="node"><span class="name">index.tsx → MapHome</span><span class="path">— current HomeScreen, dark Google Map style applied</span></div></li>
+          <li class="driver-only"><div class="node"><span class="name">index.tsx → LiveRequestsHome</span><span class="path">— renders ride-request/open as default driver landing</span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">ride-requests/</span><span class="path">— live driver inbox</span>
+          <span class="meta"><span class="pill muted icon-tag">driver-only</span><span class="pill icon-ham">hamburger</span><span class="pill" style="background: rgba(79,140,255,0.14); color:#9ec0ff">promoted</span></span>
+        </div>
+        <ul>
+          <li><div class="node"><span class="name">index.tsx</span><span class="path">— ex /ride-request/open</span></div></li>
+          <li><div class="node"><span class="name">[id].tsx</span><span class="path">— request detail · back: pop</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">wallet/</span>
+          <span class="meta"><span class="pill icon-ham">hamburger</span></span>
+        </div>
+        <ul>
+          <li><div class="node"><span class="name">index.tsx</span><span class="path">— current wallet screen</span></div></li>
+          <li><div class="node"><span class="name">transactions.tsx</span><span class="path">— moved from /transactions · back: pop</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">post-ride/</span>
+          <span class="meta"><span class="pill icon-ham">hamburger</span></span>
+        </div>
+        <ul>
+          <li><div class="node"><span class="name">index.tsx</span><span class="path">— post a ride form root</span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">rental/</span>
+          <span class="meta"><span class="pill icon-ham">hamburger</span></span>
+        </div>
+        <ul>
+          <li><div class="node"><span class="name">index.tsx</span><span class="path">— BrowseScreen "Rent a Car"</span></div></li>
+          <li><div class="node"><span class="name">[id].tsx</span><span class="path">— vehicle detail · back: pop</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">chauffeur/</span>
+          <span class="meta"><span class="pill icon-ham">hamburger</span></span>
+        </div>
+        <ul>
+          <li><div class="node"><span class="name">index.tsx</span><span class="path">— "Hire a Driver"</span></div></li>
+          <li><div class="node"><span class="name">[id].tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+          <li><div class="node"><span class="name">service/[id].tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+          <li><div class="node"><span class="name">availability.tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">chat/</span>
+          <span class="meta"><span class="pill icon-ham">hamburger</span></span>
+        </div>
+        <ul>
+          <li><div class="node"><span class="name">index.tsx</span><span class="path">— thread list</span></div></li>
+          <li><div class="node"><span class="name">[threadId].tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">rides/</span><span class="path">— My Rides</span>
+          <span class="meta"><span class="pill icon-ham">hamburger</span></span>
+        </div>
+        <ul>
+          <li><div class="node"><span class="name">index.tsx</span></div></li>
+          <li><div class="node"><span class="name">[id]/index.tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+          <li><div class="node"><span class="name">[id]/active.tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+          <li><div class="node"><span class="name">[id]/complete.tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+          <li><div class="node"><span class="name">[id]/manifest.tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+          <li><div class="node"><span class="name">search-results.tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">profile/</span>
+          <span class="meta"><span class="pill icon-ham">hamburger</span></span>
+        </div>
+        <ul>
+          <li><div class="node"><span class="name">index.tsx</span></div></li>
+          <li><div class="node"><span class="name">edit.tsx</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+          <li><div class="node"><span class="name">vehicle/*</span><span class="path">— moved from /vehicle · back: pop</span><span class="meta"><span class="pill icon-back">back</span></span></div></li>
+        </ul>
+      </li>
+
+      <li>
+        <div class="node">
+          <span class="name">notifications/</span><span class="path">— reachable from any hamburger header (bell)</span>
+          <span class="meta"><span class="pill icon-back">back (modal-style)</span></span>
+        </div>
+      </li>
+
+    </ul>
+
+    <div class="group-label">Drawer menu (in DrawerContent.tsx)</div>
+    <ol class="rules" id="drawer-list-passenger">
+      <li>Home</li>
+      <li>My Rides</li>
+      <li>Wallet</li>
+      <li>Post a Ride</li>
+      <li>Rent a Car</li>
+      <li>Hire a Driver</li>
+      <li>Chat</li>
+      <li>Profile</li>
+    </ol>
+    <ol class="rules panel-hidden" id="drawer-list-driver">
+      <li>Home <span class="role-badge driver" style="margin-left:6px">= Live Ride Requests</span></li>
+      <li>Map</li>
+      <li>My Rides</li>
+      <li>Wallet</li>
+      <li>Post a Ride</li>
+      <li>Rent a Car</li>
+      <li>Hire a Driver</li>
+      <li>Chat</li>
+      <li>Profile</li>
+    </ol>
+  </div>
+
+  <aside class="card side">
+    <h3>Rules</h3>
+    <ol class="rules">
+      <li><strong>Hamburger ↔ Back.</strong> Header shows the hamburger iff the route is the <em>root</em> of a drawer stack. Otherwise it shows back and runs <span class="kbd">navigation.pop()</span> (or <span class="kbd">router.back()</span>).</li>
+      <li><strong>Single source of truth for the drawer menu.</strong> Drop the <span class="kbd">drawerItemStyle: display:none</span> hack and declare each drawer stack once with the right <span class="kbd">drawerLabel</span> + icon.</li>
+      <li><strong>Role decides what "home" is.</strong> The <span class="kbd">home/</span> stack picks <span class="kbd">MapHome</span> for passengers and <span class="kbd">LiveRequestsHome</span> for drivers (gated on <span class="kbd">user.isDriverOnboarded &amp;&amp; user.isAvailableForRideRequest</span>). Drivers also get a second drawer item "Map" so they can still browse the passenger map.</li>
+      <li><strong>One ScreenHeader, two modes.</strong> Add a <span class="kbd">variant="root" | "child"</span> prop to <span class="kbd">ScreenHeader</span>. Root opens the drawer; child pops the stack. No more passing <span class="kbd">onBack</span> manually.</li>
+    </ol>
+
+    <h3>Dark mode fixes (bundled)</h3>
+    <ol class="rules">
+      <li><strong>Google Map theme.</strong> Pass <span class="kbd">customMapStyle</span> to <span class="kbd">MapView</span> based on <span class="kbd">useTheme().resolved</span>. Ship a small <span class="kbd">mapStyle.dark.json</span> (e.g. the Snazzy Maps "Night" style) alongside the existing map config.</li>
+      <li><strong>Drawer top-strip.</strong> The white slab is the <span class="kbd">SafeAreaView</span> top inset bleed-through. Set the drawer screen's <span class="kbd">drawerStyle.backgroundColor</span> to <span class="kbd">colors.background</span> <em>and</em> wrap <span class="kbd">DrawerContent</span> in a <span class="kbd">View</span> with <span class="kbd">colors.background</span> behind the SafeAreaView. Also swap the <span class="kbd">StatusBar style</span> on theme change.</li>
+    </ol>
+  </aside>
+</section>
+
+<!-- ========================= DIFF ========================= -->
+<section id="panel-diff" class="grid panel-hidden">
+  <div class="card">
+    <h2>Concrete changes</h2>
+    <div class="split">
+      <div>
+        <h3>Routing</h3>
+        <ol class="rules">
+          <li>Move <span class="kbd">app/post-ride/*</span> → <span class="kbd">app/(drawer)/post-ride/*</span> and delete <span class="kbd">(drawer)/post.tsx</span> redirect.</li>
+          <li>Move <span class="kbd">app/rental/*</span> → <span class="kbd">app/(drawer)/rental/*</span>.</li>
+          <li>Move <span class="kbd">app/chauffeur/*</span> → <span class="kbd">app/(drawer)/chauffeur/*</span>.</li>
+          <li>Move <span class="kbd">app/chat/[threadId].tsx</span> → <span class="kbd">app/(drawer)/chat/[threadId].tsx</span>.</li>
+          <li>Move <span class="kbd">app/transactions/*</span> → <span class="kbd">app/(drawer)/wallet/transactions.tsx</span>.</li>
+          <li>Move <span class="kbd">app/vehicle/*</span> → <span class="kbd">app/(drawer)/profile/vehicle/*</span>.</li>
+          <li>Rename <span class="kbd">app/ride-request/open.tsx</span> → <span class="kbd">app/(drawer)/ride-requests/index.tsx</span>; keep <span class="kbd">[id]</span>.</li>
+          <li>Promote <span class="kbd">(drawer)/index.tsx</span> from a single screen to a <span class="kbd">(drawer)/home/</span> stack with a role-aware <span class="kbd">index.tsx</span>.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Components</h3>
+        <ol class="rules">
+          <li><span class="kbd">ScreenHeader</span> gains <span class="kbd">variant: "root" | "child"</span>. Default <span class="kbd">child</span>. <span class="kbd">root</span> renders ☰ and calls <span class="kbd">navigation.openDrawer()</span>.</li>
+          <li>Remove every <span class="kbd">onBack={() =&gt; router.replace("/(drawer)")}</span> in the moved screens.</li>
+          <li><span class="kbd">DrawerContent.tsx</span> stops hand-listing menu items — it iterates over the routes that the drawer navigator exposes via <span class="kbd">props.state.routes</span>, with metadata (icon, label, role gate) co-located on each <span class="kbd">Drawer.Screen</span>.</li>
+          <li>New <span class="kbd">MapStyleProvider</span> (or just a small <span class="kbd">useMapStyle()</span>) picks light/dark JSON based on <span class="kbd">useTheme().resolved</span>.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Migration order (suggested):</strong><br />
+      1. Add <span class="kbd">variant</span> to ScreenHeader, no behaviour change yet.<br />
+      2. Move one stack (start with <span class="kbd">wallet</span>) under <span class="kbd">(drawer)</span>; verify the hamburger appears and Wallet → Transactions back works via <span class="kbd">pop()</span>.<br />
+      3. Roll the same pattern to the rest.<br />
+      4. Add the role-aware <span class="kbd">home/</span> stack and the new "Live Ride Requests" drawer entry.<br />
+      5. Land the dark-mode map style + drawer header fix in their own commit.
+    </div>
+
+    <div class="note warn">
+      <strong>Things to confirm before I touch code:</strong> there is no shared deep link or push-notification target that hard-codes a path like <span class="kbd">/rental/[id]</span> — those would need to be updated to <span class="kbd">/(drawer)/rental/[id]</span>.
+    </div>
+  </div>
+
+  <aside class="card side">
+    <h3>Files to edit (count)</h3>
+    <p style="color:var(--muted); font-size:13px; margin-top:0">Rough estimate from the current tree.</p>
+    <ul class="rules">
+      <li>Moves: <strong>~17 files</strong> across <span class="kbd">post-ride · rental · chauffeur · chat · transactions · vehicle · ride-request</span>.</li>
+      <li>Edits: <strong>~10 files</strong> — every screen using <span class="kbd">ScreenHeader</span> drops its <span class="kbd">onBack</span>.</li>
+      <li>New: <strong>3 files</strong> — <span class="kbd">(drawer)/home/_layout.tsx</span>, <span class="kbd">home/index.tsx</span> (role switch), <span class="kbd">mapStyle.dark.json</span>.</li>
+      <li>Touched: <span class="kbd">_layout.tsx</span> (root + drawer), <span class="kbd">DrawerContent.tsx</span>, <span class="kbd">ScreenHeader.tsx</span>.</li>
+    </ul>
+  </aside>
+</section>
+
+</main>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const panels = {
+    current: document.getElementById('panel-current'),
+    proposed: document.getElementById('panel-proposed'),
+    diff: document.getElementById('panel-diff'),
+  };
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.toggle('active', x === t));
+    Object.entries(panels).forEach(([k, el]) => el.classList.toggle('panel-hidden', k !== t.dataset.tab));
+  }));
+
+  const roleBtns = document.querySelectorAll('#roleSwitch button');
+  function applyRole(role) {
+    roleBtns.forEach(b => b.classList.toggle('active', b.dataset.role === role));
+    document.querySelectorAll('.driver-only').forEach(el => el.style.display = (role === 'driver') ? '' : 'none');
+    document.querySelectorAll('.passenger-only').forEach(el => el.style.display = (role === 'passenger') ? '' : 'none');
+    document.getElementById('drawer-list-passenger').classList.toggle('panel-hidden', role !== 'passenger');
+    document.getElementById('drawer-list-driver').classList.toggle('panel-hidden', role !== 'driver');
+  }
+  roleBtns.forEach(b => b.addEventListener('click', () => applyRole(b.dataset.role)));
+  applyRole('passenger');
+</script>
+</body>
+</html>

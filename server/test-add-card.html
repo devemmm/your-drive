@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test Stripe SetupIntent (Save Card)</title>
+    <script src="https://js.stripe.com/v3/"></script>
+  </head>
+  <body>
+    <h2>Stripe SetupIntent (Save Card) Test</h2>
+    <form id="setup-form">
+      <div id="card-element"></div>
+      <button type="submit">Save Card</button>
+    </form>
+
+    <script>
+      const stripe = Stripe('pk_test_51Mt9dkDznvSbNsXr44lzZMCrXMq2jE4atNW1UwX9AeUSa04fN7lDzfbCryGJ9UeLCS1ycB039MD22GneNnwXqGOS002kjLJu7a'); // Replace with your publishable key
+      const elements = stripe.elements();
+      const cardElement = elements.create('card');
+      cardElement.mount('#card-element');
+
+      const clientSecret = prompt("Paste your SetupIntent client_secret here:");
+
+      document.getElementById('setup-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const { setupIntent, error } = await stripe.confirmCardSetup(clientSecret, {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: "Jimmy Mutabazi"
+            }
+          }
+        });
+
+        if (error) {
+          alert("❌ Error: " + error.message);
+        } else if (setupIntent && setupIntent.status === "succeeded") {
+          alert("✅ Card saved successfully! PaymentMethod ID: " + setupIntent.payment_method);
+        }
+      });
+    </script>
+  </body>
+</html>

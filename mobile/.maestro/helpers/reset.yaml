@@ -1,0 +1,6 @@
+# Resets the test backend to a known state and stores the seeded fixtures
+# in MAESTRO env vars (USER_PASSENGER_EMAIL, USER_DRIVER_EMAIL, USER_PASSWORD).
+appId: ${MAESTRO_APP_ID}
+---
+- runScript:
+    file: ../scripts/reset.js
