@@ -1,7 +1,4 @@
 services:
-  db:
-    ports:
-      - "5434:5432"
   server:
     environment:
       TEST_AUTH_TOKEN: "qat-bus-token-local-2026"

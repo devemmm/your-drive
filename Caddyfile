@@ -12,5 +12,5 @@ api.{$DOMAIN} {
 }
 
 storage.{$DOMAIN} {
-	reverse_proxy minio:9000
+	reverse_proxy host.docker.internal:9000
 }
