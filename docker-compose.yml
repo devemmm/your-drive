@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: yourdrive_secret
       POSTGRES_DB: yourdrive
     ports:
-      - "${DB_PORT:-5433}:5432"
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "${SERVER_PORT:-3003}:3003"
+      - "127.0.0.1:${SERVER_PORT:-3003}:3003"
     environment:
       DATABASE_URL: postgresql://yourdrive:yourdrive_secret@db:5432/yourdrive
       PORT: "3003"
@@ -72,8 +72,8 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     ports:
-      - "${MINIO_API_PORT:-9480}:9000"
-      - "${MINIO_CONSOLE_PORT:-9481}:9001"
+      - "127.0.0.1:${MINIO_API_PORT:-9480}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9481}:9001"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
@@ -117,10 +117,29 @@ services:
         # VITE_GOOGLE_CLIENT_ID: ...
     restart: unless-stopped
     ports:
-      - "${CLIENT_PORT:-8480}:80"
+      - "127.0.0.1:${CLIENT_PORT:-8480}:80"
     depends_on:
       - server
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-yourdomain.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - client
+      - server
+      - minio
 
 volumes:
   postgres_data:
   minio_data:
+  caddy_data:
+  caddy_config:

@@ -1,7 +1,7 @@
 import {  Prisma, } from "@prisma/client";
 import { ErrorRequestHandler, NextFunction, Request, Response } from "express";
 import multer from "multer";
-import { CustomError } from "src/types/customError";
+import { CustomError } from "../types/customError";
 import { logger,LogLevel } from "./logger";
 
 export const errorResponse: ErrorRequestHandler = async (

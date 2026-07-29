@@ -1,0 +1,16 @@
+{
+	# Uncomment and set a real address to get Let's Encrypt renewal-problem emails.
+	# email admin@{$DOMAIN}
+}
+
+app.{$DOMAIN} {
+	reverse_proxy client:80
+}
+
+api.{$DOMAIN} {
+	reverse_proxy server:3003
+}
+
+storage.{$DOMAIN} {
+	reverse_proxy minio:9000
+}
