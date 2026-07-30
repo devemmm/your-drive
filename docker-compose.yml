@@ -18,6 +18,7 @@ services:
 
 networks:
   webproxy:
+    external: true
     name: webproxy
 
 volumes:
