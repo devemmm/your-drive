@@ -3,7 +3,7 @@
 Reverse proxy vhost directives for the staging server (Virtualmin / Apache).
 
 > For the container-based deployment (client + server as Docker containers,
-> Caddy for HTTPS), see [`DOCKER_DEPLOY.md`](./DOCKER_DEPLOY.md) instead.
+> nginx for HTTPS), see [`DOCKER_DEPLOY.md`](./DOCKER_DEPLOY.md) instead.
 
 ## Files
 

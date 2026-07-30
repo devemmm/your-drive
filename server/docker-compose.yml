@@ -46,10 +46,3 @@ services:
       ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:-User}
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    networks:
-      - webproxy
-
-networks:
-  webproxy:
-    external: true
-    name: webproxy

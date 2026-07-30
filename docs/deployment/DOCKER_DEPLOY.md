@@ -1,95 +1,71 @@
-# Docker Deployment (client + server containers, Caddy reverse proxy)
+# Docker Deployment (client + server containers, nginx reverse proxy)
 
-This is the container-based deployment path: **client** and **server** each run
-as their own Docker container, fronted by a **Caddy** container that handles
-HTTPS. Postgres and MinIO are **not** containerized here — they run directly
-on the host machine, and the server container reaches them over
-`host.docker.internal`.
-
-> If this server already runs the Apache/Virtualmin setup described in
-> [`docs/deployment/README.md`](./README.md), read the **"Port conflicts
-> with Apache"** section below before starting Caddy — both want ports 80/443.
+**client** and **server** each run as their own Docker container. Postgres
+and MinIO run outside Docker management here (Postgres native on the host;
+MinIO in its own standalone container, unrelated to these compose files).
+The host's existing **nginx** handles HTTPS and reverse-proxies each
+subdomain to the container's published port — see the config templates in
+this folder (`nginx-app.conf`, `nginx-api.conf`, `nginx-storage.conf`).
 
 ## Layout
 
 ```
 your-drive/
-├── docker-compose.yml       # caddy only
-├── Caddyfile                # app./api./storage. subdomain routing
-├── .env                     # DOMAIN=
 ├── client/
 │   ├── Dockerfile
 │   ├── docker-compose.yml   # client container
 │   └── .env                 # VITE_API_URL, CLIENT_PORT
-└── server/
-    ├── Dockerfile
-    ├── docker-compose.yml           # server container
-    ├── docker-compose.override.yml  # local-dev only (TEST_AUTH_TOKEN)
-    └── .env                         # DB/S3/secrets/URLs
+├── server/
+│   ├── Dockerfile
+│   ├── docker-compose.yml           # server container
+│   ├── docker-compose.override.yml  # local-dev only (TEST_AUTH_TOKEN)
+│   └── .env                         # DB/S3/secrets/URLs
+└── docs/deployment/
+    ├── nginx-app.conf       # app.yourdrive.rw     -> 127.0.0.1:8480 (client)
+    ├── nginx-api.conf       # api.yourdrive.rw     -> 127.0.0.1:3003 (server)
+    └── nginx-storage.conf   # storage.yourdrive.rw -> 127.0.0.1:9000 (minio)
 ```
 
-Each `docker-compose.yml` is its own independent Compose project. They're
-tied together by a shared **external** Docker network called `webproxy`, so
-Caddy can reach `client` and `server` by container name.
+`client` and `server` are independent Compose projects — no shared Docker
+network is needed between them, since nginx (on the host) reaches each one
+directly via the port it publishes to `127.0.0.1`.
 
 ## Prerequisites
 
 - Docker Engine + the Compose plugin (`docker compose version` works)
+- nginx already installed and running on the host, owning ports 80/443
 - Postgres and MinIO already running and reachable from the host machine
-  (native install, systemd service, or their own separate containers)
+- `certbot` + the nginx plugin for HTTPS: `sudo apt install certbot python3-certbot-nginx`
 - DNS control for your domain
-- Ports 80 and 443 free on the host (see conflict note above)
 
-## 1. One-time setup
-
-```bash
-git clone git@github.com:devemmm/your-drive.git
-cd your-drive
-docker network create webproxy
-```
-
-## 2. Configure environment files
-
-Three separate `.env` files — each is gitignored, copy from the matching
-`.env.example`:
+## 1. Configure environment files
 
 ```bash
-cp .env.example .env
 cp client/.env.example client/.env
 cp server/.env.example server/.env
 ```
 
-- **`.env`** (root) — just `DOMAIN=`. Replace `yourdrive.rw` with your real
-  domain everywhere it appears across all three files (single placeholder,
-  find-and-replace).
 - **`client/.env`** — `VITE_API_URL` (gets baked into the JS bundle at build
   time — must be the public API URL, not `localhost`) and `CLIENT_PORT`.
 - **`server/.env`** — `DATABASE_URL` and the `S3_*` vars must point at your
-  actual host-installed Postgres/MinIO (real user/password/db name, real
-  MinIO access/secret keys — the checked-in file only has placeholders).
-  Also set `SECRET_KEY` (random, long) and change `ADMIN_PASSWORD` from the
-  default before going live.
+  actual Postgres/MinIO instances. Also set `SECRET_KEY` (random, long) and
+  change `ADMIN_PASSWORD` from the default before going live.
 
-## 3. Point DNS at the server
+If your domain isn't `yourdrive.rw`, replace it (find-and-replace) in
+`client/.env`, `server/.env`, and the three `nginx-*.conf` files below.
+
+## 2. Point DNS at the server
 
 Create A/AAAA records for:
-- `app.yourdrive.rw`   → client
-- `api.yourdrive.rw`   → server
-- `storage.yourdrive.rw` → MinIO (proxied through Caddy to the host)
+- `app.yourdrive.rw`     → this server
+- `api.yourdrive.rw`     → this server
+- `storage.yourdrive.rw` → this server
 
-Caddy issues Let's Encrypt certs automatically on first request, which
-requires DNS to already resolve and port 80 to be reachable from the
-internet (HTTP-01 challenge).
-
-## 4. Build and start each piece
-
-Order doesn't matter as long as the `webproxy` network already exists
-(step 1).
+## 3. Build and start the containers
 
 ```bash
 cd server && docker compose up -d --build
 cd ../client && docker compose up -d --build
-cd .. && docker compose up -d --build   # starts caddy
 ```
 
 Note: plain `docker compose up` inside `server/` also picks up
@@ -98,20 +74,46 @@ local/dev testing). For a real deploy, either remove that file or run
 explicitly with `docker compose -f docker-compose.yml up -d --build` to skip
 it.
 
-## 5. Verify
+Confirm both are up and healthy:
+```bash
+docker ps
+docker exec server-server-1 wget -qO- http://127.0.0.1:3003/health
+```
+
+## 4. Install the nginx vhosts
 
 ```bash
-docker compose -f server/docker-compose.yml ps
-docker compose -f client/docker-compose.yml ps
-docker compose ps                       # caddy, from the repo root
+cd docs/deployment
+sudo cp nginx-app.conf     /etc/nginx/sites-available/app.yourdrive.rw
+sudo cp nginx-api.conf     /etc/nginx/sites-available/api.yourdrive.rw
+sudo cp nginx-storage.conf /etc/nginx/sites-available/storage.yourdrive.rw
 
+sudo ln -s /etc/nginx/sites-available/app.yourdrive.rw     /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/api.yourdrive.rw     /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/storage.yourdrive.rw /etc/nginx/sites-enabled/
+
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+## 5. Get HTTPS certificates
+
+```bash
+sudo certbot --nginx -d app.yourdrive.rw -d api.yourdrive.rw -d storage.yourdrive.rw
+```
+
+Certbot rewrites each vhost file to add the `listen 443 ssl` block and the
+HTTP→HTTPS redirect, and sets up auto-renewal (`certbot renew` via a
+systemd timer/cron, installed automatically by the package).
+
+## 6. Verify
+
+```bash
 curl -I https://app.yourdrive.rw
 curl -I https://api.yourdrive.rw
 curl -I https://storage.yourdrive.rw
 ```
 
-All three should return `200`/`301`/`302` once certs are issued (can take a
-few seconds on first boot — check `docker compose logs -f caddy` if not).
+All three should return `200`/`301`/`302`.
 
 ## Redeploying after a code change
 
@@ -120,45 +122,40 @@ cd server && git pull && docker compose up -d --build
 cd ../client && git pull && docker compose up -d --build
 ```
 
-Restarting the server container re-runs `prisma migrate deploy` and the
-admin seed automatically (both are safe to run repeatedly — the seed
-upserts, it won't duplicate the admin user or overwrite settings).
+nginx config doesn't need touching for routine deploys — only if you add a
+new subdomain/service. Restarting the server container re-runs `prisma
+migrate deploy` and the admin seed automatically (both are safe to run
+repeatedly — the seed upserts, it won't duplicate the admin user or
+overwrite settings).
 
 ## Logs / troubleshooting
 
 ```bash
 docker compose -f server/docker-compose.yml logs -f server
 docker compose -f client/docker-compose.yml logs -f client
-docker compose logs -f caddy   # from repo root
+sudo tail -f /var/log/nginx/error.log
 ```
 
-**`network webproxy declared as external, but could not be found`**
-Run `docker network create webproxy` once, before starting client/server/caddy.
+**nginx fails to bind port 80/443**
+Something else already owns it — check with `sudo ss -tlnp | grep ':80 '`.
 
-**Server can't reach Postgres/MinIO via `host.docker.internal`**
-`server/docker-compose.yml` includes `extra_hosts: host.docker.internal:host-gateway`,
-which works on Docker Engine 20.10+ on both Linux and Mac. If it still
-doesn't resolve (older Docker, unusual network setup), replace
-`host.docker.internal` in `server/.env` with the host's actual LAN/private IP
-address instead.
+**502 Bad Gateway from nginx**
+The container behind that vhost isn't up, or isn't listening on the port
+the vhost expects. Check `docker ps` — `client` should show
+`127.0.0.1:8480->80`, `server` should show `127.0.0.1:3003->3003`.
 
-**Caddy won't get a certificate**
+**Certbot can't issue a certificate**
 Confirm DNS actually resolves to this server's public IP (`dig
-app.yourdrive.rw`) and that nothing else (e.g. Apache from the setup in
-`docs/deployment/README.md`) already holds port 80/443.
+app.yourdrive.rw`) before running certbot — it needs the HTTP-01 challenge
+to reach this server on port 80.
 
-## Port conflicts with Apache
-
-The existing staging setup in [`docs/deployment/README.md`](./README.md) uses
-Apache/Virtualmin as the reverse proxy on ports 80/443, proxying to
-`localhost:3003` and `localhost:9481` directly — no Caddy involved. If you're
-deploying this Docker setup to **that same server**, the `caddy` container
-will fail to bind 80/443 because Apache already owns them.
-
-Pick one:
-- **Different server** — no conflict, use Caddy as documented above.
-- **Same server, keep Apache** — skip the root `docker-compose.yml`/Caddy
-  entirely. Add new Apache vhosts (same pattern as the existing `.conf`
-  files) that proxy to `127.0.0.1:${CLIENT_PORT}` and
-  `127.0.0.1:${SERVER_PORT}` instead — those ports are what `client/` and
-  `server/`'s compose files already publish on the host.
+**Migration errors on a fresh Postgres (e.g. `extension "postgis" is not
+available`)**
+The `add_geo_columns` migration requires the PostGIS extension installed at
+the OS level, not just enabled. Install it (`sudo apt install
+postgresql-<version>-postgis-3`), then clear the failed-migration marker so
+Prisma retries:
+```bash
+docker compose run --rm server npx prisma migrate resolve --rolled-back "20250517162115_add_geo_columns"
+docker compose up -d
+```

@@ -12,10 +12,3 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${CLIENT_PORT:-8480}:80"
-    networks:
-      - webproxy
-
-networks:
-  webproxy:
-    external: true
-    name: webproxy
