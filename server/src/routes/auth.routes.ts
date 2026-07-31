@@ -29,7 +29,12 @@ router
 router
   .route("/reset-password")
   .post(authValidator.resetPasswordValidator, validateRequestBody, AuthController.resetPassword);
-// Email verification / email-based 2FA / resend-verification routes removed (email sending disabled)
+router
+  .route("/verify-email")
+  .post(authValidator.verifyEmailValidator, validateRequestBody, AuthController.verifyEmail);
+router
+  .route("/resend-verification")
+  .post(authValidator.resendVerificationValidator, validateRequestBody, AuthController.resendVerification);
 
 // OAuth routes - only add if configured
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
